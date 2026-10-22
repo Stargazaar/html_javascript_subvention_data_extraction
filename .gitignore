@@ -1,0 +1,12 @@
+# Office / LibreOffice lock and temp files
+~$*
+.~lock.*#
+*.tmp
+
+# Copies made for transferring the HTML to the work laptop
+*.txt
+
+# Local scratch / reference files
+js_test.html
+html_demo.html
+*.drawio.png

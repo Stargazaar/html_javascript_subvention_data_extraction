@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Approved Budget and Disbursement</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #f3f6fa; color: #172033; font-family: Arial, sans-serif; }
+  .wrap { max-width: 1440px; margin: auto; padding: 24px; }
+
+  /* Header banner */
+  .hero { padding: 26px; border-radius: 16px; background: linear-gradient(135deg, #092f57, #0b6fae); color: #fff; margin-bottom: 18px; }
+  .hero h1 { margin: 0 0 8px; }
+  .hero p { margin: 0; opacity: .92; }
+
+  /* Cards and layout */
+  .card { background: #fff; border: 1px solid #dfe6ef; border-radius: 16px; box-shadow: 0 6px 20px rgba(22,34,51,.07); padding: 20px; margin-bottom: 18px; }
+  .card h2 { margin: 0 0 12px; font-size: 20px; }
+  .card p.hint { margin: -6px 0 12px; color: #526276; font-size: 13px; }
+  .comparison { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .panel { min-width: 0; }
+
+  /* Inputs */
+  .inputs { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+  .field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .field label { font-size: 13px; font-weight: 700; }
+  .field small { color: #607086; font-size: 12px; }
+  input, select, button { min-height: 42px; border-radius: 9px; border: 1px solid #bdc9d7; padding: 9px 12px; font-size: 14px; max-width: 100%; }
+  button { border: 0; background: #0078d4; color: #fff; font-weight: 700; cursor: pointer; }
+  button.secondary { background: #42566f; }
+  button:disabled { background: #9ba8b5; cursor: not-allowed; }
+  .actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 16px; }
+  .sheetPickers { display: grid; gap: 8px; margin-top: 6px; }
+  .sheetPicker { display: grid; grid-template-columns: 1fr 220px; gap: 8px; align-items: center; font-size: 13px; }
+  .sheetPicker span { overflow-wrap: anywhere; color: #344256; }
+
+  /* Status, KPIs and check log */
+  .status { margin-top: 14px; padding: 11px 13px; border-radius: 9px; background: #e9f4ff; color: #064f86; }
+  .status.error { background: #ffe7e7; color: #8f1515; }
+  .status.warn { background: #fff4d6; color: #7a4b00; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 18px; }
+  .kpi { padding: 15px; border: 1px solid #e1e7ef; border-radius: 12px; background: #f8fafc; }
+  .kpi span { display: block; color: #607086; font-size: 12px; }
+  .kpi strong { display: block; color: #092f57; font-size: 24px; margin-top: 6px; }
+  .log { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+  .log li { padding: 8px 11px; border-radius: 8px; font-size: 13px; border-left: 4px solid; }
+  .log li.ok { background: #f0fdf4; border-color: #16a34a; color: #166534; }
+  .log li.warn { background: #fffaeb; border-color: #d97706; color: #7a4b00; }
+  .log li.error { background: #fff1f1; border-color: #dc2626; color: #8f1515; }
+
+  /* Tables */
+  .tableWrap { overflow: auto; max-height: 520px; border: 1px solid #dfe6ef; border-radius: 10px; }
+  table { width: 100%; border-collapse: collapse; background: #fff; }
+  th, td { padding: 8px 10px; border-bottom: 1px solid #e5eaf0; text-align: left; white-space: nowrap; font-size: 13px; }
+  th { position: sticky; top: 0; background: #092f57; color: #fff; z-index: 1; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  td.wrapText { white-space: normal; min-width: 260px; }
+  tr:nth-child(even) { background: #f8fafc; }
+  tr.flagged td { background: #fff4f4; }
+  tr.flagged td.remarks { color: #8f1515; font-weight: 700; }
+  .empty { padding: 30px; text-align: center; color: #67778a; }
+
+  @media (max-width: 950px) { .comparison { grid-template-columns: 1fr; } }
+  @media (max-width: 650px) { .wrap { padding: 12px; } .sheetPicker { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <section class="hero">
+    <h1>1. Approved Budget and Disbursement</h1>
+    <p>Extract each PHI's approved budget (GBP) and disbursement (SuSy) for a funding stream, map PHI names, and flag mismatches for manual review.</p>
+  </section>
+
+  <!-- Inputs -->
+  <section class="card">
+    <h2>Inputs</h2>
+    <div class="inputs">
+      <div class="field">
+        <label for="stream">Funding stream</label>
+        <!-- Options are rebuilt from FUNDING_STREAMS by the script; this static one is a fallback -->
+        <select id="stream"><option value="output-gst">Output GST</option></select>
+      </div>
+      <div class="field">
+        <label for="fy">Financial year (FY column)</label>
+        <input id="fy" type="number" value="2025">
+        <small>Auto-filled from the GBP sheet name (e.g. FY25 → 2025). Also selects the mapping rows for this FY.</small>
+      </div>
+      <div class="field">
+        <label for="gbpFiles">GBP papers (.xlsx, one or more)</label>
+        <input id="gbpFiles" type="file" accept=".xlsx" multiple>
+        <div id="gbpSheets" class="sheetPickers"></div>
+      </div>
+      <div class="field">
+        <label for="susyFile">SuSy disbursement file (.xlsx)</label>
+        <input id="susyFile" type="file" accept=".xlsx">
+        <select id="susySheet" disabled><option>Select a file first</option></select>
+      </div>
+      <div class="field">
+        <label for="mapFile">PHI name mapping (.xlsx)</label>
+        <input id="mapFile" type="file" accept=".xlsx">
+      </div>
+      <div class="field">
+        <label for="mafFile">MAF Standalone Budget input (.xlsx)</label>
+        <input id="mafFile" type="file" accept=".xlsx">
+        <small>Preview only – not used in the reconciliation yet.</small>
+      </div>
+    </div>
+    <div class="actions">
+      <button id="run" type="button">Run extraction &amp; checks</button>
+      <button id="download" type="button" class="secondary" disabled>Download output (.xlsx)</button>
+    </div>
+    <div id="status" class="status error">The page script has not started. If this message stays, see the browser check below.</div>
+    <noscript><div class="status error">JavaScript is disabled in this browser – the page cannot run.</div></noscript>
+    <div class="kpis">
+      <div class="kpi"><span>GBP values extracted</span><strong id="kpiGbp">0</strong></div>
+      <div class="kpi"><span>SuSy rows matched</span><strong id="kpiSusy">0</strong></div>
+      <div class="kpi"><span>Output rows</span><strong id="kpiRows">0</strong></div>
+      <div class="kpi"><span>Matched (Check 1 = Y)</span><strong id="kpiMatched">0</strong></div>
+      <div class="kpi"><span>Flagged for review</span><strong id="kpiFlagged">0</strong></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Checks</h2>
+    <ul id="log" class="log"><li class="ok">No run yet.</li></ul>
+  </section>
+
+  <section class="card">
+    <h2>Output</h2>
+    <p class="hint">Column G = GBP amount, column H = SuSy amount. Rows with remarks are highlighted and need manual review.</p>
+    <div id="outputTable" class="tableWrap"><div class="empty">Run the extraction to see the output.</div></div>
+  </section>
+
+  <section class="comparison">
+    <div class="card panel">
+      <h2>GBP – extracted values</h2>
+      <div id="gbpTable" class="tableWrap"><div class="empty">No data yet.</div></div>
+    </div>
+    <div class="card panel">
+      <h2>SuSy – extracted rows</h2>
+      <div id="susyTable" class="tableWrap"><div class="empty">No data yet.</div></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>MAF Standalone Budget – values</h2>
+    <div id="mafTable" class="tableWrap"><div class="empty">Select a MAF Standalone Budget file to preview it.</div></div>
+  </section>
+
+</div>
+
+<!-- Browser check: plain ES5 so it runs even in old browsers / IE mode.
+     If the main script below fails, it shows why instead of a silent blank page. -->
+<script>
+  var startupErrors = [];
+  window.onerror = function (msg, src, line) { startupErrors.push(msg + ' (line ' + line + ')'); };
+  window.addEventListener('load', function () {
+    if (window.APP_READY) return;
+    var ua = navigator.userAgent;
+    var reason = document.documentMode
+      ? 'This page is open in Internet Explorer / Edge "IE mode", which cannot run it. Open the file in normal Microsoft Edge or Chrome.'
+      : 'The page script did not start. Use Microsoft Edge or Chrome version 103 or newer. If you received this file by email, check that the script was not stripped by email security.';
+    var el = document.getElementById('status');
+    el.className = 'status error';
+    el.innerHTML = '';
+    el.appendChild(document.createTextNode(reason + ' | Browser: ' + ua + (startupErrors.length ? ' | Error: ' + startupErrors.join('; ') : '')));
+  });
+</script>
+
+<script>
+/* =====================================================================
+   1. CONFIGURATION – edit these to add funding streams or adjust layouts
+   ===================================================================== */
+
+// Each funding stream: label shown in the dropdown / output, plus the exact
+// programme text to look for in the GBP and SuSy files.
+const FUNDING_STREAMS = [
+  {
+    id: 'output-gst',
+    label: 'Output GST',
+    gbpProgramme: 'Output Goods & Services Tax (Output GST) Subvention',
+    susyProgramme: 'Output GST Subvention',
+  },
+];
+
+// GBP paper layout
+const GBP = {
+  headerRow: 7,                        // 1-based row holding the headers
+  programmeHeader: 'Funding Programme',
+  firstValueCol: 'G',                  // PHI amounts start here
+  skipHeaders: ['TOTAL'],              // columns that are not PHIs
+  defaultSheet: /Subvention_/i,        // sheet pre-selected in the picker
+};
+
+// SuSy disbursement file layout
+const SUSY = {
+  headerRow: 2,
+  programmeHeader: 'Programme Funding',
+  amountHeader: 'Total Approved Budget for FY',
+  firstValueCol: 'G',                  // PHI columns run from here to the column before "Total"
+  totalHeader: 'Total',                // expected header of the last column
+  defaultSheet: /_Report$/i,
+};
+
+// PHI mapping file (first sheet, headers in row 1)
+const MAPPING = {
+  fy: 'FY',                            // optional column; if present, only rows for the selected FY are used
+  cluster: 'Cluster',
+  official: 'PHI Official Name',
+  susyName: 'SuSy - PHI Name',
+  gbpName: 'GBP Annex B1/B2 - PHI Name',
+  excludedOfficial: ['N.A.'],          // e.g. "Others" – not reconciled
+};
+
+// Output sheet
+const OUTPUT = {
+  sheetName: 'Output',
+  headers: ['S/N', 'Cluster', 'PHI', 'FY', 'Funding Stream', 'Categories', 'Amount Approved', 'Amount Disbursed',
+            'Check 1', 'Supporting Document', 'Date Timestamp', 'Amount to Adjust', 'Remarks'],
+  amountHeaders: ['Amount Approved', 'Amount Disbursed', 'Amount to Adjust'],
+  widths: [6, 10, 38, 7, 16, 12, 18, 18, 9, 60, 18, 17, 70],
+};
+
+/* =====================================================================
+   2. STATE AND SMALL HELPERS
+   ===================================================================== */
+
+const state = {
+  gbp: [],        // [{ fileName, sheets, selected }]
+  susy: null,     // { fileName, sheets }
+  mapping: null,
+  maf: null,
+  output: [],     // output rows (objects keyed by OUTPUT.headers)
+};
+
+const $ = id => document.getElementById(id);
+const norm = v => String(v ?? '').replace(/\s+/g, ' ').trim().toLowerCase();  // for comparisons
+const clean = v => String(v ?? '').replace(/\s+/g, ' ').trim();               // for display
+const isBlank = v => v === null || v === undefined || (typeof v === 'string' && v.trim() === '');
+const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const fmt = n => typeof n === 'number' ? n.toLocaleString('en-SG', { maximumFractionDigits: 2 }) : (n ?? '');
+
+// Column letters <-> 0-based index
+const colIndex = letters => [...letters.toUpperCase()].reduce((n, ch) => n * 26 + ch.charCodeAt(0) - 64, 0) - 1;
+const colLetter = idx => { let s = ''; for (let n = idx + 1; n > 0; n = Math.floor((n - 1) / 26)) s = String.fromCharCode(65 + (n - 1) % 26) + s; return s; };
+
+// Index of the header cell matching `name` (case/whitespace-insensitive), or -1
+const findHeader = (headerRow, name) => headerRow.findIndex(h => norm(h) === norm(name));
+
+// Cell -> number. null = blank, NaN = non-numeric text
+function toAmount(v) {
+  if (isBlank(v)) return null;
+  if (typeof v === 'number') return v;
+  if (typeof v === 'string') {
+    const s = v.replace(/[,\s$]/g, '');
+    if (s === '' || s === '-') return null;
+    const n = Number(s);
+    return Number.isFinite(n) ? n : NaN;
+  }
+  return NaN;
+}
+
+function timestamp(d = new Date()) {
+  const p = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+/* =====================================================================
+   3. XLSX READER (no external library: unzip + parse the sheet XML)
+   ===================================================================== */
+
+async function inflateRaw(bytes) {
+  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+
+// Minimal zip reader: returns { text(name) } for the entries in the archive
+function unzip(buffer) {
+  const view = new DataView(buffer), bytes = new Uint8Array(buffer);
+  let eocd = -1;
+  for (let i = bytes.length - 22; i >= Math.max(0, bytes.length - 65557); i--) {
+    if (view.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+  }
+  if (eocd < 0) throw new Error('not a valid .xlsx file');
+  const entries = new Map();
+  let p = view.getUint32(eocd + 16, true);
+  for (let n = view.getUint16(eocd + 10, true); n > 0; n--) {
+    const nameLen = view.getUint16(p + 28, true);
+    entries.set(new TextDecoder().decode(bytes.subarray(p + 46, p + 46 + nameLen)), {
+      method: view.getUint16(p + 10, true),
+      size: view.getUint32(p + 20, true),
+      offset: view.getUint32(p + 42, true),
+    });
+    p += 46 + nameLen + view.getUint16(p + 30, true) + view.getUint16(p + 32, true);
+  }
+  return {
+    async text(name) {
+      const e = entries.get(name);
+      if (!e) return null;
+      const start = e.offset + 30 + view.getUint16(e.offset + 26, true) + view.getUint16(e.offset + 28, true);
+      const raw = bytes.subarray(start, start + e.size);
+      const data = e.method === 0 ? raw : e.method === 8 ? await inflateRaw(raw) : null;
+      if (!data) throw new Error(`unsupported compression in ${name}`);
+      return new TextDecoder().decode(data);
+    },
+  };
+}
+
+const parseXml = text => new DOMParser().parseFromString(text, 'application/xml');
+const byTag = (el, tag) => [...el.getElementsByTagNameNS('*', tag)];
+const childTag = (el, tag) => [...el.children].filter(c => c.localName === tag);
+
+// Read every sheet into a 2D array of values: rows[rowIdx][colIdx] (0-based)
+async function readXlsx(buffer) {
+  const zip = unzip(buffer);
+  const wbText = await zip.text('xl/workbook.xml');
+  if (!wbText) throw new Error('workbook.xml not found – is this an Excel workbook?');
+  const rels = {};
+  byTag(parseXml(await zip.text('xl/_rels/workbook.xml.rels')), 'Relationship').forEach(r => {
+    const t = r.getAttribute('Target');
+    rels[r.getAttribute('Id')] = { type: r.getAttribute('Type'), path: t.startsWith('/') ? t.slice(1) : 'xl/' + t };
+  });
+
+  // Shared strings (rich-text runs are concatenated; phonetic runs ignored)
+  const sstRel = Object.values(rels).find(r => /\/sharedStrings$/.test(r.type));
+  const sstText = sstRel ? await zip.text(sstRel.path) : null;
+  const sst = sstText ? byTag(parseXml(sstText), 'si').map(si =>
+    byTag(si, 't').filter(t => t.parentNode.localName !== 'rPh').map(t => t.textContent).join('')) : [];
+
+  const sheets = [];
+  for (const s of byTag(parseXml(wbText), 'sheet')) {
+    const rid = [...s.attributes].find(a => a.localName === 'id' && a.name !== 'sheetId')?.value;
+    const xml = rels[rid] && await zip.text(rels[rid].path);
+    if (xml) sheets.push({ name: s.getAttribute('name'), hidden: !!s.getAttribute('state'), rows: parseSheet(xml, sst) });
+  }
+  return sheets;
+}
+
+function parseSheet(xml, sst) {
+  const rows = [];
+  let r = -1;
+  for (const rowEl of byTag(parseXml(xml), 'row')) {
+    r = rowEl.getAttribute('r') ? Number(rowEl.getAttribute('r')) - 1 : r + 1;
+    const row = rows[r] = [];
+    let c = -1;
+    for (const cell of childTag(rowEl, 'c')) {
+      const ref = cell.getAttribute('r');
+      c = ref ? colIndex(ref.replace(/\d+/g, '')) : c + 1;
+      row[c] = cellValue(cell, sst);
+    }
+  }
+  for (let i = 0; i < rows.length; i++) rows[i] = Array.from(rows[i] || [], v => v ?? null);  // dense rows, blanks = null
+  return rows;
+}
+
+function cellValue(cell, sst) {
+  const type = cell.getAttribute('t');
+  const v = childTag(cell, 'v')[0]?.textContent ?? null;
+  if (type === 'inlineStr') return byTag(cell, 't').map(t => t.textContent).join('');
+  if (v === null) return null;
+  if (type === 's') return sst[Number(v)] ?? '';
+  if (type === 'str' || type === 'e') return v;
+  if (type === 'b') return v === '1';
+  return Number(v);
+}
+
+async function loadWorkbook(file) {
+  if (!/\.xlsx$/i.test(file.name)) throw new Error(`"${file.name}" is not an .xlsx file.`);
+  try {
+    return { fileName: file.name, sheets: await readXlsx(await file.arrayBuffer()) };
+  } catch (e) {
+    throw new Error(`Could not read "${file.name}": ${e.message}`);
+  }
+}
+
+/* =====================================================================
+   4. EXTRACTION
+   Each extracted value becomes an "entry":
+   { source, file, sheet, cell, name, amount, phi (mapping lookup), issue }
+   ===================================================================== */
+
+// 25 / 2025 / "FY25" -> 2025
+const fullYear = v => { const n = Number(String(v ?? '').replace(/^FY/i, '')); return !n ? null : n < 100 ? 2000 + n : n; };
+
+function parseMapping(wb, fy, log) {
+  const sheet = wb.sheets[0];
+  const header = sheet.rows[0] || [];
+  const cols = {};
+  for (const key of ['cluster', 'official', 'susyName', 'gbpName']) {
+    cols[key] = findHeader(header, MAPPING[key]);
+    if (cols[key] < 0) throw new Error(`Mapping file: header "${MAPPING[key]}" not found in row 1.`);
+  }
+  const fyCol = findHeader(header, MAPPING.fy);
+  const records = [], byGbp = new Map(), bySusy = new Map();
+  const add = (map, key, rec) => { if (key) map.set(key, [...(map.get(key) || []), rec]); };
+  sheet.rows.slice(1).forEach(row => {
+    if (fyCol >= 0 && fullYear(row[fyCol]) !== fy) return;  // keep only the selected FY
+    const rec = Object.fromEntries(Object.entries(cols).map(([k, i]) => [k, clean(row[i])]));
+    if (!rec.official) return;
+    rec.order = records.length;
+    records.push(rec);
+    add(byGbp, norm(rec.gbpName), rec);
+    add(bySusy, norm(rec.susyName), rec);
+  });
+  if (!records.length) throw new Error(`Mapping file: no rows found${fyCol >= 0 ? ` for FY ${fy}` : ''}.`);
+  log('ok', `Mapping: ${records.length} PHI name records loaded from "${wb.fileName}"${fyCol >= 0 ? ` (FY ${fy})` : ''}.`);
+  return { byGbp, bySusy };
+}
+
+// Look up a source PHI name in the mapping -> { status, rec }
+function lookupPhi(map, name) {
+  const recs = map.get(norm(name)) || [];
+  const distinct = [...new Map(recs.map(r => [`${r.cluster}|${r.official}`, r])).values()];
+  if (!distinct.length) return { status: 'unmapped' };
+  if (distinct.length > 1) return { status: 'ambiguous', recs: distinct };
+  if (MAPPING.excludedOfficial.some(x => norm(x) === norm(distinct[0].official))) return { status: 'excluded', rec: distinct[0] };
+  return { status: 'ok', rec: distinct[0] };
+}
+
+function extractGbp(wb, sheetName, stream, mapping, log) {
+  const sheet = wb.sheets.find(s => s.name === sheetName);
+  const where = `GBP "${wb.fileName}" [${sheetName}]`;
+  const header = sheet.rows[GBP.headerRow - 1] || [];
+  const progCol = findHeader(header, GBP.programmeHeader);
+  if (progCol < 0) {
+    log('error', `${where}: row ${GBP.headerRow} has no "${GBP.programmeHeader}" header – file skipped.`);
+    return [];
+  }
+  log('ok', `${where}: header row ${GBP.headerRow} found ("${GBP.programmeHeader}" in column ${colLetter(progCol)}).`);
+
+  const matches = [];
+  sheet.rows.forEach((row, r) => { if (r >= GBP.headerRow && norm(row[progCol]) === norm(stream.gbpProgramme)) matches.push(r); });
+  if (!matches.length) { log('warn', `${where}: "${stream.gbpProgramme}" not found.`); return []; }
+  if (matches.length > 1) log('warn', `${where}: "${stream.gbpProgramme}" appears in ${matches.length} rows (${matches.map(r => r + 1).join(', ')}) – values will be flagged as duplicates.`);
+
+  const entries = [];
+  for (const r of matches) {
+    for (let c = colIndex(GBP.firstValueCol); c < header.length; c++) {
+      const name = clean(header[c]);
+      if (!name || GBP.skipHeaders.some(h => norm(h) === norm(name))) continue;
+      const amount = toAmount(sheet.rows[r][c]);
+      if (amount === null) continue;  // blank = no budget for this PHI
+      entries.push({
+        source: 'GBP', file: wb.fileName, sheet: sheetName, cell: `${colLetter(c)}${r + 1}`, name, amount,
+        phi: lookupPhi(mapping.byGbp, name),
+        issue: Number.isNaN(amount) ? `Non-numeric GBP value in ${colLetter(c)}${r + 1}: "${sheet.rows[r][c]}"` : null,
+      });
+    }
+  }
+  log('ok', `${where}: ${entries.length} PHI value(s) extracted from row(s) ${matches.map(r => r + 1).join(', ')}.`);
+  return entries;
+}
+
+function extractSusy(wb, sheetName, stream, mapping, log) {
+  const sheet = wb.sheets.find(s => s.name === sheetName);
+  const where = `SuSy "${wb.fileName}" [${sheetName}]`;
+  const header = sheet.rows[SUSY.headerRow - 1] || [];
+
+  const progCols = header.map((h, i) => norm(h) === norm(SUSY.programmeHeader) ? i : -1).filter(i => i >= 0);
+  if (progCols.length !== 1) throw new Error(`${where}: row ${SUSY.headerRow} must contain exactly one "${SUSY.programmeHeader}" header (found ${progCols.length}).`);
+  const amountCol = findHeader(header, SUSY.amountHeader);
+  if (amountCol < 0) throw new Error(`${where}: header "${SUSY.amountHeader}" not found in row ${SUSY.headerRow}.`);
+  let lastCol = header.length - 1;
+  while (lastCol >= 0 && isBlank(header[lastCol])) lastCol--;
+  if (norm(header[lastCol]) !== norm(SUSY.totalHeader)) log('warn', `${where}: last header is "${clean(header[lastCol])}", expected "${SUSY.totalHeader}" – it is excluded anyway.`);
+  const firstCol = colIndex(SUSY.firstValueCol), range = `${SUSY.firstValueCol}:${colLetter(lastCol - 1)}`;
+  log('ok', `${where}: header row ${SUSY.headerRow} found; PHI columns ${range}, amount from "${SUSY.amountHeader}".`);
+
+  const entries = [];
+  sheet.rows.forEach((row, r) => {
+    if (r < SUSY.headerRow || norm(row[progCols[0]]) !== norm(stream.susyProgramme)) return;
+    const filled = [];
+    for (let c = firstCol; c < lastCol; c++) if (!isBlank(row[c])) filled.push(c);
+    const amount = toAmount(row[amountCol]);
+    const entry = { source: 'SuSy', file: wb.fileName, sheet: sheetName, row: r + 1, amount, name: null, issue: null };
+    if (filled.length === 1) {
+      entry.name = clean(header[filled[0]]);
+      entry.cell = `${colLetter(filled[0])}${r + 1}`;
+      entry.phi = lookupPhi(mapping.bySusy, entry.name);
+    } else {
+      entry.issue = `SuSy row ${r + 1} has ${filled.length} values in ${range} (expected 1) – PHI cannot be identified`;
+    }
+    if (amount === null || Number.isNaN(amount)) {
+      entry.issue = [entry.issue, `"${SUSY.amountHeader}" is ${amount === null ? 'blank' : 'non-numeric'} in row ${r + 1}`].filter(Boolean).join('; ');
+      entry.amount = null;
+    }
+    entries.push(entry);
+  });
+  if (!entries.length) log('warn', `${where}: "${stream.susyProgramme}" not found.`);
+  else log(entries.some(e => e.issue) ? 'warn' : 'ok', `${where}: ${entries.length} "${stream.susyProgramme}" row(s) found; ${entries.filter(e => e.issue).length} with issues.`);
+  return entries;
+}
+
+/* =====================================================================
+   5. RECONCILIATION – group entries per PHI and build the output rows
+   ===================================================================== */
+
+function reconcile(entries, stream, fy, log) {
+  const groups = new Map();
+  const getGroup = (key, init) => groups.get(key) || groups.set(key, { ...init, gbp: [], susy: [], notes: [] }).get(key);
+
+  for (const e of entries) {
+    let g;
+    if (!e.name) {
+      g = getGroup(`issue|${e.source}|${e.row}`, { cluster: '', phi: `(Unidentified – ${e.source} row ${e.row})`, order: Infinity });
+    } else if (e.phi.status === 'ok') {
+      g = getGroup(`${e.phi.rec.cluster}|${e.phi.rec.official}`, { cluster: e.phi.rec.cluster, phi: e.phi.rec.official, order: e.phi.rec.order });
+    } else if (e.phi.status === 'excluded') {
+      log('warn', `${e.source} value under "${e.name}" (${e.cell}, ${fmt(e.amount)}) maps to "${e.phi.rec.official}" – excluded from the output.`);
+      continue;
+    } else {
+      g = getGroup(`${e.phi.status}|${norm(e.name)}`, { cluster: '', phi: e.name, order: Infinity });
+      const note = e.phi.status === 'unmapped'
+        ? `Unmapped PHI name in ${e.source}: "${e.name}"`
+        : `Ambiguous PHI name in ${e.source}: "${e.name}" maps to ${e.phi.recs.map(r => `${r.official} (${r.cluster})`).join(', ')}`;
+      if (!g.notes.includes(note)) g.notes.push(note);
+    }
+    (e.source === 'GBP' ? g.gbp : g.susy).push(e);
+    if (e.issue) g.notes.push(e.issue);
+  }
+
+  const now = timestamp();
+  return [...groups.values()]
+    .sort((a, b) => a.order - b.order)
+    .map((g, i) => {
+      const remarks = [...g.notes];
+      const describe = list => list.map(e => `${e.cell || 'row ' + e.row} = ${fmt(e.amount)}`).join('; ');
+
+      // GBP: one value per PHI; more than one (across rows or files) is flagged, not added
+      const gbpValid = g.gbp.filter(e => !e.issue);
+      let approved = null;
+      if (gbpValid.length === 1) approved = gbpValid[0].amount;
+      else if (gbpValid.length > 1) remarks.push(`Duplicate in GBP (not added): ${gbpValid.map(e => `${e.file} ${e.cell} = ${fmt(e.amount)}`).join('; ')}`);
+
+      // SuSy: different SuSy names for one PHI are added; the same SuSy column twice is flagged
+      const susyValid = g.susy.filter(e => !e.issue);
+      const byName = new Map();
+      susyValid.forEach(e => byName.set(norm(e.name), [...(byName.get(norm(e.name)) || []), e]));
+      const dupNames = [...byName.values()].filter(list => list.length > 1);
+      let disbursed = null;
+      if (dupNames.length) {
+        remarks.push(`Duplicate in SuSy (not added): ${dupNames.map(l => `${l[0].name} rows ${l.map(e => e.row).join(', ')} (${describe(l)})`).join('; ')}`);
+      } else if (susyValid.length) {
+        disbursed = susyValid.reduce((sum, e) => sum + e.amount, 0);
+        if (susyValid.length > 1) remarks.push(`SuSy amounts combined: ${susyValid.map(e => `${e.name} (row ${e.row}) ${fmt(e.amount)}`).join(' + ')}`);
+      }
+
+      // Compare G (GBP) with H (SuSy)
+      let matched = false;
+      if (approved !== null && disbursed !== null) {
+        const diff = Math.round(disbursed) - Math.round(approved);
+        matched = diff === 0;
+        if (!matched) remarks.push(`Amount mismatch (H − G = ${fmt(diff)})`);
+      } else if (approved === null && disbursed !== null && !gbpValid.length) {
+        remarks.push('Not in GBP');
+      } else if (disbursed === null && approved !== null && !susyValid.length) {
+        remarks.push('Not in SuSy');
+      }
+
+      const files = src => [...new Set(g[src].map(e => e.file))].join(', ');
+      const docs = [g.gbp.length && `GBP: ${files('gbp')}`, g.susy.length && `SuSy: ${files('susy')}`].filter(Boolean).join('; ');
+
+      return {
+        'S/N': i + 1,
+        'Cluster': g.cluster,
+        'PHI': g.phi,
+        'FY': fy,
+        'Funding Stream': stream.label,
+        'Categories': '',
+        'Amount Approved': approved,
+        'Amount Disbursed': disbursed,
+        'Check 1': matched ? 'Y' : 'N',
+        'Supporting Document': docs,
+        'Date Timestamp': now,
+        'Amount to Adjust': null,
+        'Remarks': remarks.join(' | '),
+      };
+    });
+}
+
+/* =====================================================================
+   6. RUN – validate inputs, extract, reconcile, render
+   ===================================================================== */
+
+async function run() {
+  const logs = [];
+  const log = (level, msg) => logs.push({ level, msg });
+  try {
+    if (!state.gbp.length) throw new Error('Select at least one GBP paper.');
+    if (!state.susy) throw new Error('Select the SuSy disbursement file.');
+    if (!state.mapping) throw new Error('Select the PHI name mapping file.');
+    if (!state.maf) log('warn', 'No MAF Standalone Budget file selected (not needed for this stream).');
+
+    const stream = FUNDING_STREAMS.find(s => s.id === $('stream').value);
+    const fy = Number($('fy').value) || null;
+    const mapping = parseMapping(state.mapping, fy, log);
+    const gbpEntries = state.gbp.flatMap(wb => extractGbp(wb, wb.selected, stream, mapping, log));
+    const susyEntries = extractSusy(state.susy, $('susySheet').value, stream, mapping, log);
+
+    state.output = reconcile([...gbpEntries, ...susyEntries], stream, fy, log);
+    const flagged = state.output.filter(r => r['Remarks']).length;
+    if (flagged) log('warn', `${flagged} output row(s) have remarks – review and fix the source files, then re-run.`);
+    else log('ok', 'All PHIs matched between GBP and SuSy.');
+
+    renderLog(logs);
+    renderEntries(gbpEntries, susyEntries);
+    renderOutput();
+    setKpis(gbpEntries.length, susyEntries.length, state.output);
+    $('download').disabled = !state.output.length;
+    setStatus(flagged ? `Done – ${flagged} of ${state.output.length} rows flagged for manual review.` : `Done – all ${state.output.length} rows matched.`, flagged ? 'warn' : '');
+  } catch (e) {
+    log('error', e.message);
+    renderLog(logs);
+    setStatus(e.message, 'error');
+  }
+}
+
+/* =====================================================================
+   7. RENDERING
+   ===================================================================== */
+
+function setStatus(msg, level = '') { $('status').textContent = msg; $('status').className = 'status ' + level; }
+
+function renderLog(logs) {
+  const icon = { ok: '✓', warn: '!', error: '✕' };
+  $('log').innerHTML = logs.map(l => `<li class="${l.level}">${icon[l.level]} ${esc(l.msg)}</li>`).join('');
+}
+
+function setKpis(gbp, susy, rows) {
+  $('kpiGbp').textContent = gbp;
+  $('kpiSusy').textContent = susy;
+  $('kpiRows').textContent = rows.length;
+  $('kpiMatched').textContent = rows.filter(r => r['Check 1'] === 'Y').length;
+  $('kpiFlagged').textContent = rows.filter(r => r['Remarks']).length;
+}
+
+// Generic table: columns = [{ key, label, num, wrap }]
+function renderTable(el, columns, rows, rowClass = () => '') {
+  if (!rows.length) { el.innerHTML = '<div class="empty">No rows.</div>'; return; }
+  el.innerHTML = '<table><thead><tr>' + columns.map(c => `<th>${esc(c.label ?? c.key)}</th>`).join('') + '</tr></thead><tbody>' +
+    rows.map(r => `<tr class="${rowClass(r)}">` + columns.map(c => {
+      const cls = [c.num && 'num', c.wrap && 'wrapText', c.cls].filter(Boolean).join(' ');
+      return `<td class="${cls}">${esc(c.num ? fmt(r[c.key]) : r[c.key])}</td>`;
+    }).join('') + '</tr>').join('') + '</tbody></table>';
+}
+
+const mappedName = e => !e.phi ? '' : e.phi.status === 'ok' || e.phi.status === 'excluded' ? e.phi.rec.official : `(${e.phi.status})`;
+
+function renderEntries(gbp, susy) {
+  renderTable($('gbpTable'),
+    [{ key: 'file', label: 'File' }, { key: 'cell', label: 'Cell' }, { key: 'name', label: 'GBP PHI name' },
+     { key: 'mapped', label: 'Mapped PHI' }, { key: 'amount', label: 'Amount', num: true }],
+    gbp.map(e => ({ ...e, mapped: mappedName(e) })));
+  renderTable($('susyTable'),
+    [{ key: 'row', label: 'Row' }, { key: 'name', label: 'SuSy PHI column' }, { key: 'mapped', label: 'Mapped PHI' },
+     { key: 'amount', label: SUSY.amountHeader, num: true }, { key: 'issue', label: 'Issue', wrap: true }],
+    susy.map(e => ({ ...e, mapped: mappedName(e) })), e => e.issue ? 'flagged' : '');
+}
+
+function renderOutput() {
+  renderTable($('outputTable'),
+    OUTPUT.headers.map(h => ({ key: h, num: OUTPUT.amountHeaders.includes(h), wrap: h === 'Remarks' || h === 'Supporting Document', cls: h === 'Remarks' ? 'remarks' : '' })),
+    state.output, r => r['Remarks'] ? 'flagged' : '');
+}
+
+// MAF preview: first sheet as-is, row 1 as header
+function renderMaf() {
+  const sheet = state.maf.sheets[0];
+  const [header = [], ...body] = sheet.rows;
+  const cols = header.map((h, i) => ({ key: i, label: clean(h) || colLetter(i), num: body.some(r => typeof r[i] === 'number') }));
+  renderTable($('mafTable'), cols, body.filter(r => r.some(v => !isBlank(v))).map(r => ({ ...r })));
+}
+
+/* =====================================================================
+   8. XLSX WRITER (no external library: stored zip of SpreadsheetML)
+   ===================================================================== */
+
+const CRC_TABLE = Array.from({ length: 256 }, (_, n) => { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; return c >>> 0; });
+const crc32 = bytes => { let c = 0xFFFFFFFF; for (const b of bytes) c = CRC_TABLE[(c ^ b) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
+
+function zipStore(files) {
+  const enc = new TextEncoder(), chunks = [], central = [];
+  let offset = 0;
+  for (const f of files) {
+    const name = enc.encode(f.name), data = enc.encode(f.text), crc = crc32(data);
+    const local = new DataView(new ArrayBuffer(30));
+    [[0, 0x04034b50, 4], [4, 20, 2], [14, crc, 4], [18, data.length, 4], [22, data.length, 4], [26, name.length, 2]]
+      .forEach(([o, v, n]) => n === 4 ? local.setUint32(o, v, true) : local.setUint16(o, v, true));
+    const dir = new DataView(new ArrayBuffer(46));
+    [[0, 0x02014b50, 4], [4, 20, 2], [6, 20, 2], [16, crc, 4], [20, data.length, 4], [24, data.length, 4], [28, name.length, 2], [42, offset, 4]]
+      .forEach(([o, v, n]) => n === 4 ? dir.setUint32(o, v, true) : dir.setUint16(o, v, true));
+    chunks.push(local, name, data);
+    central.push(dir, name);
+    offset += 30 + name.length + data.length;
+  }
+  const size = central.reduce((s, c) => s + c.byteLength, 0);
+  const end = new DataView(new ArrayBuffer(22));
+  [[0, 0x06054b50, 4], [8, files.length, 2], [10, files.length, 2], [12, size, 4], [16, offset, 4]]
+    .forEach(([o, v, n]) => n === 4 ? end.setUint32(o, v, true) : end.setUint16(o, v, true));
+  return new Blob([...chunks, ...central, end], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+}
+
+function buildOutputXlsx(rows) {
+  const xmlEsc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const NS = 'xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"';
+  const head = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
+  // Styles: 0 normal, 1 header, 2 amount #,##0, 3 wrapped text, 4 remark (red fill)
+  const styles = `${head}<styleSheet ${NS}>
+    <fonts count="2"><font><sz val="10"/><name val="Arial"/></font><font><b/><sz val="10"/><color rgb="FFFFFFFF"/><name val="Arial"/></font></fonts>
+    <fills count="4"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>
+      <fill><patternFill patternType="solid"><fgColor rgb="FF092F57"/></patternFill></fill>
+      <fill><patternFill patternType="solid"><fgColor rgb="FFFFE7E7"/></patternFill></fill></fills>
+    <borders count="2"><border/><border><left style="thin"><color rgb="FFBFBFBF"/></left><right style="thin"><color rgb="FFBFBFBF"/></right>
+      <top style="thin"><color rgb="FFBFBFBF"/></top><bottom style="thin"><color rgb="FFBFBFBF"/></bottom></border></borders>
+    <cellStyleXfs count="1"><xf/></cellStyleXfs>
+    <cellXfs count="5">
+      <xf fontId="0" fillId="0" borderId="1" applyBorder="1"><alignment vertical="top"/></xf>
+      <xf fontId="1" fillId="2" borderId="1" applyFont="1" applyFill="1" applyBorder="1"><alignment vertical="center" wrapText="1"/></xf>
+      <xf numFmtId="3" fontId="0" fillId="0" borderId="1" applyNumberFormat="1" applyBorder="1"><alignment vertical="top"/></xf>
+      <xf fontId="0" fillId="0" borderId="1" applyBorder="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf>
+      <xf fontId="0" fillId="3" borderId="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf>
+    </cellXfs></styleSheet>`;
+
+  const cell = (ref, v, s) => v === null || v === undefined || v === ''
+    ? `<c r="${ref}" s="${s}"/>`
+    : typeof v === 'number' ? `<c r="${ref}" s="${s}"><v>${v}</v></c>`
+    : `<c r="${ref}" s="${s}" t="inlineStr"><is><t xml:space="preserve">${xmlEsc(v)}</t></is></c>`;
+  const styleFor = (h, v) => OUTPUT.amountHeaders.includes(h) ? 2 : h === 'Remarks' && v ? 4 : (h === 'Remarks' || h === 'Supporting Document') ? 3 : 0;
+
+  const sheetRows = [`<row r="1" ht="30" customHeight="1">${OUTPUT.headers.map((h, c) => cell(`${colLetter(c)}1`, h, 1)).join('')}</row>`,
+    ...rows.map((r, i) => `<row r="${i + 2}">${OUTPUT.headers.map((h, c) => cell(`${colLetter(c)}${i + 2}`, r[h], styleFor(h, r[h]))).join('')}</row>`)];
+  const lastRef = `${colLetter(OUTPUT.headers.length - 1)}${rows.length + 1}`;
+  const sheet = `${head}<worksheet ${NS}><dimension ref="A1:${lastRef}"/>
+    <sheetViews><sheetView workbookViewId="0" tabSelected="1"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>
+    <cols>${OUTPUT.widths.map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`).join('')}</cols>
+    <sheetData>${sheetRows.join('')}</sheetData><autoFilter ref="A1:${lastRef}"/></worksheet>`;
+
+  const REL = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+  return zipStore([
+    { name: '[Content_Types].xml', text: `${head}<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+      <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/>
+      <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+      <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+      <Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>` },
+    { name: '_rels/.rels', text: `${head}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+      <Relationship Id="rId1" Type="${REL}/officeDocument" Target="xl/workbook.xml"/></Relationships>` },
+    { name: 'xl/workbook.xml', text: `${head}<workbook ${NS} xmlns:r="${REL}"><sheets><sheet name="${xmlEsc(OUTPUT.sheetName)}" sheetId="1" r:id="rId1"/></sheets>
+      <definedNames><definedName name="_xlnm._FilterDatabase" localSheetId="0" hidden="1">'${OUTPUT.sheetName}'!$A$1:$${lastRef.replace(/(\d+)$/, '$$$1')}</definedName></definedNames></workbook>` },
+    { name: 'xl/_rels/workbook.xml.rels', text: `${head}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+      <Relationship Id="rId1" Type="${REL}/worksheet" Target="worksheets/sheet1.xml"/>
+      <Relationship Id="rId2" Type="${REL}/styles" Target="styles.xml"/></Relationships>` },
+    { name: 'xl/styles.xml', text: styles },
+    { name: 'xl/worksheets/sheet1.xml', text: sheet },
+  ]);
+}
+
+function download() {
+  if (!state.output.length) return;
+  const stream = FUNDING_STREAMS.find(s => s.id === $('stream').value);
+  const url = URL.createObjectURL(buildOutputXlsx(state.output));
+  const a = Object.assign(document.createElement('a'), { href: url, download: `Output - ${stream.label} - ${timestamp().replace(/[-: ]/g, '')}.xlsx` });
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 1000);
+}
+
+/* =====================================================================
+   9. FILE INPUT HANDLERS AND WIRING
+   ===================================================================== */
+
+// Fill a <select> with sheet names, pre-selecting the first one matching `pattern`
+function sheetOptions(select, sheets, pattern) {
+  const pick = (sheets.find(s => pattern.test(s.name)) || sheets[0]).name;
+  select.innerHTML = sheets.map(s => `<option ${s.name === pick ? 'selected' : ''}>${esc(s.name)}</option>`).join('');
+  select.disabled = false;
+  return pick;
+}
+
+async function onGbpFiles(files) {
+  try {
+    state.gbp = await Promise.all(files.map(loadWorkbook));
+    $('gbpSheets').innerHTML = '';
+    state.gbp.forEach(wb => {
+      const row = document.createElement('div');
+      row.className = 'sheetPicker';
+      row.innerHTML = `<span>${esc(wb.fileName)}</span><select></select>`;
+      const select = row.querySelector('select');
+      wb.selected = sheetOptions(select, wb.sheets, GBP.defaultSheet);
+      select.addEventListener('change', () => { wb.selected = select.value; });
+      $('gbpSheets').appendChild(row);
+    });
+    const fy = state.gbp.map(wb => /FY(\d{2})/i.exec(wb.selected)).find(Boolean);
+    if (fy) $('fy').value = 2000 + Number(fy[1]);
+    setStatus(`${state.gbp.length} GBP paper(s) loaded.`);
+  } catch (e) {
+    state.gbp = [];
+    $('gbpSheets').innerHTML = '';
+    setStatus(e.message, 'error');
+  }
+}
+
+async function onSusyFile(file) {
+  try {
+    state.susy = await loadWorkbook(file);
+    sheetOptions($('susySheet'), state.susy.sheets, SUSY.defaultSheet);
+    setStatus(`SuSy file loaded (${state.susy.sheets.length} sheet(s)). Check the selected tab.`);
+  } catch (e) {
+    state.susy = null;
+    setStatus(e.message, 'error');
+  }
+}
+
+async function onMapFile(file) {
+  try {
+    state.mapping = await loadWorkbook(file);
+    setStatus('PHI mapping loaded.');
+  } catch (e) {
+    state.mapping = null;
+    setStatus(e.message, 'error');
+  }
+}
+
+async function onMafFile(file) {
+  try {
+    state.maf = await loadWorkbook(file);
+    renderMaf();
+    setStatus('MAF Standalone Budget file loaded – values shown below.');
+  } catch (e) {
+    state.maf = null;
+    setStatus(e.message, 'error');
+  }
+}
+
+$('stream').innerHTML = FUNDING_STREAMS.map(s => `<option value="${s.id}">${esc(s.label)}</option>`).join('');
+$('gbpFiles').addEventListener('change', e => e.target.files.length && onGbpFiles([...e.target.files]));
+$('susyFile').addEventListener('change', e => e.target.files[0] && onSusyFile(e.target.files[0]));
+$('mapFile').addEventListener('change', e => e.target.files[0] && onMapFile(e.target.files[0]));
+$('mafFile').addEventListener('change', e => e.target.files[0] && onMafFile(e.target.files[0]));
+$('run').addEventListener('click', run);
+$('download').addEventListener('click', download);
+
+// The xlsx reader needs DecompressionStream('deflate-raw') (Edge/Chrome 103+)
+let canReadXlsx = false;
+try { new DecompressionStream('deflate-raw'); canReadXlsx = true; } catch (e) { /* unsupported */ }
+if (canReadXlsx) {
+  setStatus('Select the GBP paper(s), SuSy file and PHI mapping, then run.');
+} else {
+  setStatus(`This browser cannot read .xlsx files (needs Edge or Chrome 103+). Browser: ${navigator.userAgent}`, 'error');
+  ['gbpFiles', 'susyFile', 'mapFile', 'mafFile', 'run'].forEach(id => { $(id).disabled = true; });
+}
+window.APP_READY = true;
+</script>
+</body>
+</html>

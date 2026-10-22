@@ -1,0 +1,157 @@
+<mxfile host="app.diagrams.net">
+  <diagram id="flow" name="Process Flow">
+    <mxGraphModel dx="1946" dy="1190" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1720" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" parent="1" style="text;html=1;fontSize=20;fontStyle=1;align=left;verticalAlign=middle;" value="Funding Stream Budget vs PHI Reconciliation – Process Flow" vertex="1">
+          <mxGeometry height="34" width="900" x="20" as="geometry" />
+        </mxCell>
+        <mxCell id="laneA" parent="1" style="swimlane;horizontal=0;startSize=34;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontStyle=1;swimlaneFillColor=#fbfbfb;" value="1. Approved Budget and Disbursement&lt;div&gt;April&lt;/div&gt;" vertex="1">
+          <mxGeometry height="360" width="1080" x="20" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="laneB" parent="1" style="swimlane;horizontal=0;startSize=34;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontStyle=1;swimlaneFillColor=#fbfbfb;" value="&lt;div&gt;2. PHIs Submission of Utilization&lt;/div&gt;&lt;div&gt;Aug – Sep&lt;/div&gt;" vertex="1">
+          <mxGeometry height="380" width="1080" x="20" y="420" as="geometry" />
+        </mxCell>
+        <mxCell id="-4D_uj9gAemQ3CnuCdYo-1" parent="laneB" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=10;fillColor=#d5e8d4;strokeColor=#82b366;" value="PHI mapping table" vertex="1">
+          <mxGeometry height="62" width="150" x="410" y="180" as="geometry" />
+        </mxCell>
+        <mxCell id="laneC" parent="1" style="swimlane;startSize=34;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontStyle=1;swimlaneFillColor=#fbfbfb;" value="3. Reconciliation &amp;amp; Adjustments" vertex="1">
+          <mxGeometry height="760" width="560" x="1120" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="a_gbp" parent="1" style="shape=document;whiteSpace=wrap;html=1;boundedLbl=1;size=0.2;fillColor=#f5f5f5;strokeColor=#666666;" value="Global Budget Paper (Excel)&lt;br&gt;&lt;i&gt;3× – one per cluster&lt;/i&gt;" vertex="1">
+          <mxGeometry height="62" width="210" x="70" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="a_adhoc" parent="1" style="shape=document;whiteSpace=wrap;html=1;boundedLbl=1;size=0.2;fillColor=#f5f5f5;strokeColor=#666666;" value="Ad-hoc GBPs&lt;br&gt;&lt;i&gt;PDF → Excel&lt;/i&gt;" vertex="1">
+          <mxGeometry height="62" width="210" x="70" y="170" as="geometry" />
+        </mxCell>
+        <mxCell id="a_susy" parent="1" style="shape=document;whiteSpace=wrap;html=1;boundedLbl=1;size=0.2;fillColor=#f5f5f5;strokeColor=#666666;" value="SuSy disbursement (Excel)&lt;br&gt;&lt;i&gt;1 file, many tabs&lt;/i&gt;" vertex="1">
+          <mxGeometry height="62" width="210" x="70" y="260" as="geometry" />
+        </mxCell>
+        <mxCell id="a_note" parent="1" style="shape=note;size=14;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#d6b656;fontStyle=2;fontSize=11;" value="GBP format is similar across funding streams, except PGMG" vertex="1">
+          <mxGeometry height="56" width="190" x="530" y="72" as="geometry" />
+        </mxCell>
+        <mxCell id="a_ident" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="Identify files&lt;br&gt;by folder" vertex="1">
+          <mxGeometry height="60" width="150" x="330" y="171" as="geometry" />
+        </mxCell>
+        <mxCell id="a_ext" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;br&gt;&lt;div&gt;&lt;b&gt;Consolidate&lt;/b&gt; &amp;amp; &lt;b&gt;Check&lt;/b&gt;&lt;/div&gt;&lt;div&gt;&lt;b&gt;(Cols G &amp;amp; H)&lt;/b&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="60" width="170" x="530" y="171" as="geometry" />
+        </mxCell>
+        <mxCell id="a_map" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=10;fillColor=#d5e8d4;strokeColor=#82b366;" value="PHI mapping table" vertex="1">
+          <mxGeometry height="62" width="150" x="330" y="290" as="geometry" />
+        </mxCell>
+        <mxCell id="a_dec" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="Checks&lt;br&gt;pass?" vertex="1">
+          <mxGeometry height="80" width="130" x="750" y="161" as="geometry" />
+        </mxCell>
+        <mxCell id="a_int" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=10;fillColor=#d5e8d4;strokeColor=#82b366;" value="Intermediate&lt;br&gt;(budget data)" vertex="1">
+          <mxGeometry height="70" width="130" x="940" y="166" as="geometry" />
+        </mxCell>
+        <mxCell id="a_man" parent="1" style="shape=trapezoid;perimeter=trapezoidPerimeter;whiteSpace=wrap;html=1;fixedSize=1;flipV=1;size=14;fillColor=#f8cecc;strokeColor=#b85450;" value="Manual review&lt;br&gt;&amp;amp; fix exception" vertex="1">
+          <mxGeometry height="56" width="150" x="740" y="290" as="geometry" />
+        </mxCell>
+        <mxCell id="ea1" edge="1" parent="1" source="a_gbp" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;" target="a_ident">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ea2" edge="1" parent="1" source="a_adhoc" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;" target="a_ident">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ea3" edge="1" parent="1" source="a_susy" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;" target="a_ident">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ea4" edge="1" parent="1" source="a_ident" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;" target="a_ext">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ea5" edge="1" parent="1" source="a_map" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;dashed=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.25;entryY=1;entryDx=0;entryDy=0;fontSize=10;" target="a_ext" value="lookup">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ea6" edge="1" parent="1" source="a_ext" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;" target="a_dec">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ea7" edge="1" parent="1" source="a_dec" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;fontStyle=1;" target="a_int" value="Yes">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ea8" edge="1" parent="1" source="a_dec" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;fontStyle=1;fontColor=#b85450;strokeColor=#b85450;" target="a_man" value="No – exception">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ea9" edge="1" parent="1" source="a_man" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#b85450;fontColor=#b85450;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.75;entryY=1;entryDx=0;entryDy=0;fontSize=10;" target="a_ext" value="re-run">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="b_tpl" parent="1" style="shape=document;whiteSpace=wrap;html=1;boundedLbl=1;size=0.2;fillColor=#f5f5f5;strokeColor=#666666;" value="PHI submission&lt;br&gt;&lt;i&gt;Template Excel&lt;/i&gt;" vertex="1">
+          <mxGeometry height="62" width="210" x="70" y="480" as="geometry" />
+        </mxCell>
+        <mxCell id="b_pdf" parent="1" style="shape=document;whiteSpace=wrap;html=1;boundedLbl=1;size=0.2;fillColor=#f5f5f5;strokeColor=#666666;" value="PHI submission&lt;br&gt;&lt;i&gt;PDF&lt;/i&gt;" vertex="1">
+          <mxGeometry height="62" width="210" x="70" y="580" as="geometry" />
+        </mxCell>
+        <mxCell id="b_note" parent="1" style="shape=note;size=14;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#d6b656;fontStyle=2;fontSize=11;" value="e.g. ~10 files per funding stream" vertex="1">
+          <mxGeometry height="46" width="210" x="70" y="690" as="geometry" />
+        </mxCell>
+        <mxCell id="b_coll" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="PHIs submit&lt;br&gt;inputs" vertex="1">
+          <mxGeometry height="60" width="150" x="330" y="531" as="geometry" />
+        </mxCell>
+        <mxCell id="b_ext" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;br&gt;&lt;div&gt;&lt;b&gt;Consolidate&lt;/b&gt; &amp;amp; &lt;b&gt;Check&lt;/b&gt;&lt;/div&gt;&lt;div&gt;&lt;b&gt;Cols J,K,L&lt;/b&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="60" width="170" x="530" y="531" as="geometry" />
+        </mxCell>
+        <mxCell id="b_dec" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="Checks&lt;br&gt;pass?" vertex="1">
+          <mxGeometry height="80" width="130" x="750" y="521" as="geometry" />
+        </mxCell>
+        <mxCell id="b_int" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=10;fillColor=#d5e8d4;strokeColor=#82b366;" value="Intermediate&lt;br&gt;(PHI data)" vertex="1">
+          <mxGeometry height="70" width="130" x="940" y="526" as="geometry" />
+        </mxCell>
+        <mxCell id="b_man" parent="1" style="shape=trapezoid;perimeter=trapezoidPerimeter;whiteSpace=wrap;html=1;fixedSize=1;flipV=1;size=14;fillColor=#f8cecc;strokeColor=#b85450;" value="Manual review&lt;br&gt;&amp;amp; fix exception" vertex="1">
+          <mxGeometry height="56" width="150" x="740" y="660" as="geometry" />
+        </mxCell>
+        <mxCell id="eb1" edge="1" parent="1" source="b_tpl" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;" target="b_coll">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eb2" edge="1" parent="1" source="b_pdf" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;" target="b_coll">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eb3" edge="1" parent="1" source="b_coll" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;" target="b_ext">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eb4" edge="1" parent="1" source="b_ext" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;" target="b_dec">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eb5" edge="1" parent="1" source="b_dec" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;fontStyle=1;" target="b_int" value="Yes">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eb6" edge="1" parent="1" source="b_dec" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;fontStyle=1;fontColor=#b85450;strokeColor=#b85450;" target="b_man" value="No – exception">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eb7" edge="1" parent="1" source="b_man" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#b85450;fontColor=#b85450;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;fontSize=10;" target="b_ext" value="re-run">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c_calc" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;Calculate checks&lt;/b&gt;&lt;br&gt;(budget vs PHI)" vertex="1">
+          <mxGeometry height="70" width="170" x="1170" y="386" as="geometry" />
+        </mxCell>
+        <mxCell id="c_out" parent="1" style="shape=document;whiteSpace=wrap;html=1;boundedLbl=1;size=0.2;fillColor=#e1d5e7;strokeColor=#9673a6;" value="Output file&lt;br&gt;&lt;i&gt;1 per batch&lt;/i&gt;" vertex="1">
+          <mxGeometry height="70" width="200" x="1420" y="386" as="geometry" />
+        </mxCell>
+        <mxCell id="c_comb" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="Combine all batches" vertex="1">
+          <mxGeometry height="60" width="180" x="1430" y="520" as="geometry" />
+        </mxCell>
+        <mxCell id="c_final" parent="1" style="shape=document;whiteSpace=wrap;html=1;boundedLbl=1;size=0.2;fillColor=#e1d5e7;strokeColor=#9673a6;" value="&lt;b&gt;1 consolidated output file&lt;/b&gt;&lt;br&gt;(Excel)" vertex="1">
+          <mxGeometry height="80" width="200" x="1420" y="640" as="geometry" />
+        </mxCell>
+        <mxCell id="c_note" parent="1" style="shape=note;size=14;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#d6b656;fontStyle=2;fontSize=11;" value="Repeated per batch / funding stream" vertex="1">
+          <mxGeometry height="56" width="170" x="1170" y="522" as="geometry" />
+        </mxCell>
+        <mxCell id="ec1" edge="1" parent="1" source="a_int" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="c_calc">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ec2" edge="1" parent="1" source="b_int" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" target="c_calc">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ec3" edge="1" parent="1" source="c_calc" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;" target="c_out">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ec4" edge="1" parent="1" source="c_out" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;" target="c_comb">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ec5" edge="1" parent="1" source="c_comb" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;" target="c_final">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
