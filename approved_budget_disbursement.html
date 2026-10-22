@@ -95,7 +95,7 @@
       <div class="field">
         <label for="susyFile">SuSy disbursement file (.xlsx)</label>
         <input id="susyFile" type="file" accept=".xlsx">
-        <select id="susySheet" disabled><option>Select a file first</option></select>
+        <small id="susyTabs">The tab for each GBP cluster is picked automatically (e.g. NHG → NHG_Report).</small>
       </div>
       <div class="field">
         <label for="mapFile">PHI name mapping (.xlsx)</label>
@@ -185,9 +185,14 @@ const FUNDING_STREAMS = [
   },
 ];
 
+// Clusters. Each GBP paper belongs to one cluster, read from its sheet name (e.g. "FY25 Subvention_NHG")
+// or, failing that, its file name. The cluster selects the SuSy tab and the mapping rows to use.
+const CLUSTERS = ['NHG', 'NUHS', 'SHS'];
+
 // GBP paper layout
 const GBP = {
-  headerRow: 7,                        // 1-based row holding the headers
+  headerMarker: 'Funding Period',      // header row = first row whose column A has this text
+  headerSearchRows: 30,                // only search the top rows for the marker
   programmeHeader: 'Funding Programme',
   firstValueCol: 'G',                  // PHI amounts start here
   skipHeaders: ['TOTAL'],              // columns that are not PHIs
@@ -201,7 +206,7 @@ const SUSY = {
   amountHeader: 'Total Approved Budget for FY',
   firstValueCol: 'G',                  // PHI columns run from here to the column before "Total"
   totalHeader: 'Total',                // expected header of the last column
-  defaultSheet: /_Report$/i,
+  sheetName: cluster => `${cluster}_Report`,  // SuSy tab for a cluster (spaces/underscores and case are ignored when matching)
 };
 
 // PHI mapping file (first sheet, headers in row 1)
@@ -409,9 +414,9 @@ function parseMapping(wb, fy, log) {
   return { byGbp, bySusy };
 }
 
-// Look up a source PHI name in the mapping -> { status, rec }
-function lookupPhi(map, name) {
-  const recs = map.get(norm(name)) || [];
+// Look up a source PHI name in the mapping, within one cluster -> { status, rec }
+function lookupPhi(map, name, cluster) {
+  const recs = (map.get(norm(name)) || []).filter(r => norm(r.cluster) === norm(cluster));
   const distinct = [...new Map(recs.map(r => [`${r.cluster}|${r.official}`, r])).values()];
   if (!distinct.length) return { status: 'unmapped' };
   if (distinct.length > 1) return { status: 'ambiguous', recs: distinct };
@@ -419,19 +424,54 @@ function lookupPhi(map, name) {
   return { status: 'ok', rec: distinct[0] };
 }
 
-function extractGbp(wb, sheetName, stream, mapping, log) {
+// Find the cluster of a GBP paper: sheet name first, then file name. Must match exactly one cluster.
+// A cluster code counts only when it is not part of a longer word ("_NHG" and "- NHG " match, "NHGX" does not).
+const CLUSTER_RE = new RegExp(`(?:^|[^A-Za-z])(${CLUSTERS.join('|')})(?![A-Za-z])`, 'g');
+
+function detectCluster(wb, log) {
+  const where = `GBP "${wb.fileName}" [${wb.selected}]`;
+  for (const [source, text] of [['sheet name', wb.selected], ['file name', wb.fileName]]) {
+    const found = [...new Set([...text.matchAll(CLUSTER_RE)].map(m => m[1]))];
+    if (found.length === 1) {
+      log('ok', `${where}: cluster ${found[0]} (from ${source}).`);
+      return found[0];
+    }
+    if (found.length > 1) {
+      log('error', `${where}: ${source} mentions more than one cluster (${found.join(', ')}) – file skipped.`);
+      return null;
+    }
+  }
+  log('error', `${where}: no cluster (${CLUSTERS.join(' / ')}) found in the sheet or file name – file skipped.`);
+  return null;
+}
+
+// Find the SuSy tab for a cluster, ignoring case, spaces and underscores ("NHG_Report" = "NHG Report")
+function findSusySheet(wb, cluster) {
+  const key = name => name.replace(/[\s_]+/g, '').toLowerCase();
+  return wb.sheets.find(s => key(s.name) === key(SUSY.sheetName(cluster)));
+}
+
+function extractGbp(wb, sheetName, cluster, stream, mapping, log) {
   const sheet = wb.sheets.find(s => s.name === sheetName);
   const where = `GBP "${wb.fileName}" [${sheetName}]`;
-  const header = sheet.rows[GBP.headerRow - 1] || [];
-  const progCol = findHeader(header, GBP.programmeHeader);
-  if (progCol < 0) {
-    log('error', `${where}: row ${GBP.headerRow} has no "${GBP.programmeHeader}" header – file skipped.`);
+
+  // Locate the header row: the layout differs between papers (e.g. row 7 in Annex B1, row 5 in some PGMG papers)
+  const headerIdx = sheet.rows.slice(0, GBP.headerSearchRows).findIndex(row => norm(row[0]) === norm(GBP.headerMarker));
+  if (headerIdx < 0) {
+    log('error', `${where}: no row with "${GBP.headerMarker}" in column A within the first ${GBP.headerSearchRows} rows – file skipped.`);
     return [];
   }
-  log('ok', `${where}: header row ${GBP.headerRow} found ("${GBP.programmeHeader}" in column ${colLetter(progCol)}).`);
+  const header = sheet.rows[headerIdx];
+  const progCol = findHeader(header, GBP.programmeHeader);
+  if (progCol < 0) {
+    log('error', `${where}: header row ${headerIdx + 1} has no "${GBP.programmeHeader}" header – file skipped.`);
+    return [];
+  }
+  log('ok', `${where}: header row ${headerIdx + 1} found ("${GBP.programmeHeader}" in column ${colLetter(progCol)}).`);
 
+  // Data rows are everything below the header row
   const matches = [];
-  sheet.rows.forEach((row, r) => { if (r >= GBP.headerRow && norm(row[progCol]) === norm(stream.gbpProgramme)) matches.push(r); });
+  sheet.rows.forEach((row, r) => { if (r > headerIdx && norm(row[progCol]) === norm(stream.gbpProgramme)) matches.push(r); });
   if (!matches.length) { log('warn', `${where}: "${stream.gbpProgramme}" not found.`); return []; }
   if (matches.length > 1) log('warn', `${where}: "${stream.gbpProgramme}" appears in ${matches.length} rows (${matches.map(r => r + 1).join(', ')}) – values will be flagged as duplicates.`);
 
@@ -443,8 +483,8 @@ function extractGbp(wb, sheetName, stream, mapping, log) {
       const amount = toAmount(sheet.rows[r][c]);
       if (amount === null) continue;  // blank = no budget for this PHI
       entries.push({
-        source: 'GBP', file: wb.fileName, sheet: sheetName, cell: `${colLetter(c)}${r + 1}`, name, amount,
-        phi: lookupPhi(mapping.byGbp, name),
+        source: 'GBP', file: wb.fileName, sheet: sheetName, cluster, cell: `${colLetter(c)}${r + 1}`, name, amount,
+        phi: lookupPhi(mapping.byGbp, name, cluster),
         issue: Number.isNaN(amount) ? `Non-numeric GBP value in ${colLetter(c)}${r + 1}: "${sheet.rows[r][c]}"` : null,
       });
     }
@@ -453,7 +493,7 @@ function extractGbp(wb, sheetName, stream, mapping, log) {
   return entries;
 }
 
-function extractSusy(wb, sheetName, stream, mapping, log) {
+function extractSusy(wb, sheetName, cluster, stream, mapping, log) {
   const sheet = wb.sheets.find(s => s.name === sheetName);
   const where = `SuSy "${wb.fileName}" [${sheetName}]`;
   const header = sheet.rows[SUSY.headerRow - 1] || [];
@@ -474,11 +514,11 @@ function extractSusy(wb, sheetName, stream, mapping, log) {
     const filled = [];
     for (let c = firstCol; c < lastCol; c++) if (!isBlank(row[c])) filled.push(c);
     const amount = toAmount(row[amountCol]);
-    const entry = { source: 'SuSy', file: wb.fileName, sheet: sheetName, row: r + 1, amount, name: null, issue: null };
+    const entry = { source: 'SuSy', file: wb.fileName, sheet: sheetName, cluster, row: r + 1, amount, name: null, issue: null };
     if (filled.length === 1) {
       entry.name = clean(header[filled[0]]);
       entry.cell = `${colLetter(filled[0])}${r + 1}`;
-      entry.phi = lookupPhi(mapping.bySusy, entry.name);
+      entry.phi = lookupPhi(mapping.bySusy, entry.name, cluster);
     } else {
       entry.issue = `SuSy row ${r + 1} has ${filled.length} values in ${range} (expected 1) – PHI cannot be identified`;
     }
@@ -497,21 +537,22 @@ function extractSusy(wb, sheetName, stream, mapping, log) {
    5. RECONCILIATION – group entries per PHI and build the output rows
    ===================================================================== */
 
-function reconcile(entries, stream, fy, log) {
+// clusterNotes: { cluster: note } for clusters whose SuSy tab could not be read (shown instead of "Not in SuSy")
+function reconcile(entries, stream, fy, log, clusterNotes = {}) {
   const groups = new Map();
   const getGroup = (key, init) => groups.get(key) || groups.set(key, { ...init, gbp: [], susy: [], notes: [] }).get(key);
 
   for (const e of entries) {
     let g;
     if (!e.name) {
-      g = getGroup(`issue|${e.source}|${e.row}`, { cluster: '', phi: `(Unidentified – ${e.source} row ${e.row})`, order: Infinity });
+      g = getGroup(`issue|${e.cluster}|${e.source}|${e.row}`, { cluster: e.cluster, phi: `(Unidentified – ${e.source} ${e.sheet} row ${e.row})`, order: Infinity });
     } else if (e.phi.status === 'ok') {
       g = getGroup(`${e.phi.rec.cluster}|${e.phi.rec.official}`, { cluster: e.phi.rec.cluster, phi: e.phi.rec.official, order: e.phi.rec.order });
     } else if (e.phi.status === 'excluded') {
       log('warn', `${e.source} value under "${e.name}" (${e.cell}, ${fmt(e.amount)}) maps to "${e.phi.rec.official}" – excluded from the output.`);
       continue;
     } else {
-      g = getGroup(`${e.phi.status}|${norm(e.name)}`, { cluster: '', phi: e.name, order: Infinity });
+      g = getGroup(`${e.phi.status}|${e.cluster}|${norm(e.name)}`, { cluster: e.cluster, phi: e.name, order: Infinity });
       const note = e.phi.status === 'unmapped'
         ? `Unmapped PHI name in ${e.source}: "${e.name}"`
         : `Ambiguous PHI name in ${e.source}: "${e.name}" maps to ${e.phi.recs.map(r => `${r.official} (${r.cluster})`).join(', ')}`;
@@ -556,7 +597,7 @@ function reconcile(entries, stream, fy, log) {
       } else if (approved === null && disbursed !== null && !gbpValid.length) {
         remarks.push('Not in GBP');
       } else if (disbursed === null && approved !== null && !susyValid.length) {
-        remarks.push('Not in SuSy');
+        remarks.push(clusterNotes[g.cluster] || 'Not in SuSy');
       }
 
       const files = src => [...new Set(g[src].map(e => e.file))].join(', ');
@@ -596,10 +637,36 @@ async function run() {
     const stream = FUNDING_STREAMS.find(s => s.id === $('stream').value);
     const fy = Number($('fy').value) || null;
     const mapping = parseMapping(state.mapping, fy, log);
-    const gbpEntries = state.gbp.flatMap(wb => extractGbp(wb, wb.selected, stream, mapping, log));
-    const susyEntries = extractSusy(state.susy, $('susySheet').value, stream, mapping, log);
 
-    state.output = reconcile([...gbpEntries, ...susyEntries], stream, fy, log);
+    // GBP: each paper is linked to a cluster; papers without a clear cluster are skipped
+    const gbpEntries = [], clusters = new Set();
+    for (const wb of state.gbp) {
+      const cluster = detectCluster(wb, log);
+      if (!cluster) continue;
+      clusters.add(cluster);
+      gbpEntries.push(...extractGbp(wb, wb.selected, cluster, stream, mapping, log));
+    }
+    if (!clusters.size) throw new Error('None of the GBP papers could be linked to a cluster – see Checks.');
+
+    // SuSy: read the <Cluster>_Report tab for every cluster found in the GBP papers.
+    // A missing or malformed tab only affects that cluster; its rows get an explanatory remark.
+    const susyEntries = [], clusterNotes = {};
+    for (const cluster of clusters) {
+      const sheet = findSusySheet(state.susy, cluster);
+      if (!sheet) {
+        clusterNotes[cluster] = `SuSy tab "${SUSY.sheetName(cluster)}" not found`;
+        log('error', `SuSy "${state.susy.fileName}": tab "${SUSY.sheetName(cluster)}" for cluster ${cluster} not found.`);
+        continue;
+      }
+      try {
+        susyEntries.push(...extractSusy(state.susy, sheet.name, cluster, stream, mapping, log));
+      } catch (e) {
+        clusterNotes[cluster] = `SuSy tab "${sheet.name}" could not be read`;
+        log('error', e.message);
+      }
+    }
+
+    state.output = reconcile([...gbpEntries, ...susyEntries], stream, fy, log, clusterNotes);
     const flagged = state.output.filter(r => r['Remarks']).length;
     if (flagged) log('warn', `${flagged} output row(s) have remarks – review and fix the source files, then re-run.`);
     else log('ok', 'All PHIs matched between GBP and SuSy.');
@@ -650,11 +717,11 @@ const mappedName = e => !e.phi ? '' : e.phi.status === 'ok' || e.phi.status === 
 
 function renderEntries(gbp, susy) {
   renderTable($('gbpTable'),
-    [{ key: 'file', label: 'File' }, { key: 'cell', label: 'Cell' }, { key: 'name', label: 'GBP PHI name' },
+    [{ key: 'cluster', label: 'Cluster' }, { key: 'file', label: 'File' }, { key: 'cell', label: 'Cell' }, { key: 'name', label: 'GBP PHI name' },
      { key: 'mapped', label: 'Mapped PHI' }, { key: 'amount', label: 'Amount', num: true }],
     gbp.map(e => ({ ...e, mapped: mappedName(e) })));
   renderTable($('susyTable'),
-    [{ key: 'row', label: 'Row' }, { key: 'name', label: 'SuSy PHI column' }, { key: 'mapped', label: 'Mapped PHI' },
+    [{ key: 'sheet', label: 'Tab' }, { key: 'row', label: 'Row' }, { key: 'name', label: 'SuSy PHI column' }, { key: 'mapped', label: 'Mapped PHI' },
      { key: 'amount', label: SUSY.amountHeader, num: true }, { key: 'issue', label: 'Issue', wrap: true }],
     susy.map(e => ({ ...e, mapped: mappedName(e) })), e => e.issue ? 'flagged' : '');
 }
@@ -804,10 +871,13 @@ async function onGbpFiles(files) {
 async function onSusyFile(file) {
   try {
     state.susy = await loadWorkbook(file);
-    sheetOptions($('susySheet'), state.susy.sheets, SUSY.defaultSheet);
-    setStatus(`SuSy file loaded (${state.susy.sheets.length} sheet(s)). Check the selected tab.`);
+    // Show which cluster tabs exist; the right one is used automatically for each GBP cluster
+    const tabs = CLUSTERS.map(c => `${c}: ${findSusySheet(state.susy, c)?.name || 'missing'}`).join(' · ');
+    $('susyTabs').textContent = `Cluster tabs – ${tabs}`;
+    setStatus('SuSy file loaded.');
   } catch (e) {
     state.susy = null;
+    $('susyTabs').textContent = 'The tab for each GBP cluster is picked automatically (e.g. NHG → NHG_Report).';
     setStatus(e.message, 'error');
   }
 }

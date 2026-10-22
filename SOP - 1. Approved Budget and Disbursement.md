@@ -23,12 +23,17 @@ For one funding stream at a time, confirm that the **approved budget** for each 
 ### 2.1 Required file layouts
 
 **GBP paper (I1)**
-- Row 7 is the header row and contains `Funding Programme`.
-- PHI amounts start in column **G**; each header in row 7 from G onwards is a PHI name. The `TOTAL` column is ignored.
+- The header row is the first row (within the top 30) whose column A is `Funding Period` – row 7 in Annex B1 papers, row 5 or 7 in PGMG papers. It must also contain `Funding Programme`.
+- PHI amounts start in column **G**; each header from G onwards is a PHI name. The `TOTAL` column is ignored.
 - The funding stream row is found by its Funding Programme text (e.g. `Output Goods & Services Tax (Output GST) Subvention`). It can be on any row.
 - Exception: the PGMG paper (Annex B2) has a different layout and is **not yet supported**.
 
+**Cluster (I1 → I2)**
+- Clusters are always **NHG**, **NUHS** and **SHS**. Each GBP paper's cluster is read from its sheet name (e.g. `FY25 Subvention_NHG`), or from the file name if the sheet name has none. A paper with no cluster, or more than one, is skipped.
+- The cluster picks the SuSy tab (`NHG` → `NHG_Report`) and limits the PHI mapping to that cluster's rows.
+
 **SuSy disbursement file (I2)**
+- One tab per cluster, named `<Cluster>_Report`.
 - Row 2 is the header row; it must contain **exactly one** `Programme Funding` column and a `Total Approved Budget for FY` column.
 - PHI columns run from **G** to the column before the last column (`Total`).
 - Each funding stream row (e.g. `Output GST Subvention`) must have **exactly one** value in the PHI columns. That column identifies the PHI; the amount is taken from `Total Approved Budget for FY`.
@@ -55,7 +60,7 @@ For one funding stream at a time, confirm that the **approved budget** for each 
 | **S2** | Analyst | **Open the tool** `approved_budget_disbursement.html` in Microsoft Edge or Chrome. The status bar should turn blue ("Select the GBP paper(s)…"). | – |
 | **S3** | Analyst | **Select the funding stream** (e.g. Output GST). | – |
 | **S4** | Analyst | **Load files.** Select the GBP paper(s), SuSy file and PHI mapping (optionally the MAF file). | – |
-| **S5** | Analyst | **Confirm sheets and FY.** Check the sheet picked for each GBP (`FY25 Subvention_<Cluster>`) and the SuSy tab (`<Cluster>_Report`). FY is auto-filled from the GBP sheet name; correct it if needed. | – |
+| **S5** | Analyst | **Confirm sheets and FY.** Check the sheet picked for each GBP (`FY25 Subvention_<Cluster>`). The SuSy tab is chosen automatically from each GBP's cluster (`<Cluster>_Report`); the SuSy field lists which cluster tabs were found. FY is auto-filled from the GBP sheet name; correct it if needed. | – |
 | **S6** | Analyst | **Run extraction & checks.** | Checks panel, Output table |
 | **S7** | Analyst | **Review the Checks panel.** Green = passed, amber = warning, red = error (file skipped or run stopped). | – |
 | **S8** | Analyst | **Decision – Checks pass?** All output rows have `Check 1 = Y` and no Remarks. | – |
@@ -74,8 +79,10 @@ The tool raises these in the **Checks** panel (file-level) or the **Remarks** co
 | Check | Result if it fails | Action |
 |---|---|---|
 | File is `.xlsx` and readable | File rejected | Re-save as `.xlsx` |
-| GBP row 7 has `Funding Programme` | That GBP is skipped (red) | Check the sheet selection / header row |
+| GBP has a `Funding Period` row (column A, top 30 rows) that also contains `Funding Programme` | That GBP is skipped (red) | Check the sheet selection / header row |
+| GBP sheet or file name identifies exactly one cluster (NHG / NUHS / SHS) | That GBP is skipped (red) | Rename the sheet or file to include the cluster |
 | Funding stream found in GBP | Warning, no values from that file | Confirm the stream exists in that GBP |
+| SuSy has a `<Cluster>_Report` tab for each GBP cluster | That cluster's rows get remark `SuSy tab "…" not found` (red) | Check the SuSy file / tab name |
 | SuSy row 2 has exactly one `Programme Funding` and a `Total Approved Budget for FY` | Run stops (red) | Check the SuSy tab selection / header row |
 | SuSy last header is `Total` | Warning only | Confirm the column layout |
 | Mapping has the required headers and rows for the FY | Run stops (red) | Fix mapping headers / add FY rows |
