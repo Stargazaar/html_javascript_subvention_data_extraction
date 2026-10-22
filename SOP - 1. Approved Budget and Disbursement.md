@@ -1,0 +1,157 @@
+# SOP – 1. Approved Budget and Disbursement
+
+> **Status:** Draft v0.1 (working notes). This will become the user SOP and the basis for a detailed draw.io flow of this sub-process.
+> **Scope:** Sub-process 1 of *Funding Stream Budget vs PHI Reconciliation* (see `funding-process-flow(3)(2).drawio`).
+> **Timing:** April (start of FY).
+> **Tool:** `approved_budget_disbursement.html`
+
+---
+
+## 1. Purpose
+
+For one funding stream at a time, confirm that the **approved budget** for each PHI (from the Global Budget Paper, GBP) matches the **amount set up for disbursement** (from the SuSy disbursement file). Matches go forward as intermediate budget data for sub-process 3 (Reconciliation & Adjustments). Mismatches and exceptions are reviewed and fixed manually, then the check is re-run.
+
+## 2. Inputs
+
+| # | Input | Format | Where it comes from | Used for |
+|---|---|---|---|---|
+| I1 | GBP paper(s) – one per cluster, plus any ad-hoc GBPs | `.xlsx` (ad-hoc PDFs must first be converted to Excel) | `01 Global Budget Paper/` | Approved budget per PHI (column G **Amount Approved**) |
+| I2 | SuSy disbursement file – one file, one tab per cluster | `.xlsx` | `02 SuSy Disbursement File/` | Disbursement per PHI (column H **Amount Disbursed**) |
+| I3 | PHI name mapping | `.xlsx` | Project root | Translates GBP and SuSy PHI names to the official PHI name |
+| I4 | MAF Standalone Budget input | `.xlsx` | `01 Global Budget Paper/` | Preview only (not yet used in checks) |
+
+### 2.1 Required file layouts
+
+**GBP paper (I1)**
+- Row 7 is the header row and contains `Funding Programme`.
+- PHI amounts start in column **G**; each header in row 7 from G onwards is a PHI name. The `TOTAL` column is ignored.
+- The funding stream row is found by its Funding Programme text (e.g. `Output Goods & Services Tax (Output GST) Subvention`). It can be on any row.
+- Exception: the PGMG paper (Annex B2) has a different layout and is **not yet supported**.
+
+**SuSy disbursement file (I2)**
+- Row 2 is the header row; it must contain **exactly one** `Programme Funding` column and a `Total Approved Budget for FY` column.
+- PHI columns run from **G** to the column before the last column (`Total`).
+- Each funding stream row (e.g. `Output GST Subvention`) must have **exactly one** value in the PHI columns. That column identifies the PHI; the amount is taken from `Total Approved Budget for FY`.
+
+**PHI name mapping (I3)**
+- Row 1 headers: `FY`, `Cluster`, `PHI Official Name`, `SuSy - PHI Name`, `GBP Annex B1/B2 - PHI Name`.
+- Only rows for the selected FY are used (e.g. `25` = FY2025).
+- `PHI Official Name` = `N.A.` (e.g. SuSy `Others`) is excluded from the reconciliation.
+
+### 2.2 Funding streams
+
+| Stream | GBP Funding Programme | SuSy Programme Funding | Status |
+|---|---|---|---|
+| Output GST | Output Goods & Services Tax (Output GST) Subvention | Output GST Subvention | Supported |
+| PGMG | (Annex B2 – PG / MG blocks) | TBC | Not yet supported |
+
+---
+
+## 3. Procedure
+
+| Step | Who | Action | Tool / output |
+|---|---|---|---|
+| **S1** | Analyst | **Collect files.** Save GBP papers to `01 Global Budget Paper/` and the SuSy file to `02 SuSy Disbursement File/`. Convert any ad-hoc GBP PDFs to Excel. | Files by folder |
+| **S2** | Analyst | **Open the tool** `approved_budget_disbursement.html` in Microsoft Edge or Chrome. The status bar should turn blue ("Select the GBP paper(s)…"). | – |
+| **S3** | Analyst | **Select the funding stream** (e.g. Output GST). | – |
+| **S4** | Analyst | **Load files.** Select the GBP paper(s), SuSy file and PHI mapping (optionally the MAF file). | – |
+| **S5** | Analyst | **Confirm sheets and FY.** Check the sheet picked for each GBP (`FY25 Subvention_<Cluster>`) and the SuSy tab (`<Cluster>_Report`). FY is auto-filled from the GBP sheet name; correct it if needed. | – |
+| **S6** | Analyst | **Run extraction & checks.** | Checks panel, Output table |
+| **S7** | Analyst | **Review the Checks panel.** Green = passed, amber = warning, red = error (file skipped or run stopped). | – |
+| **S8** | Analyst | **Decision – Checks pass?** All output rows have `Check 1 = Y` and no Remarks. | – |
+| **S9a** | Analyst | **If yes:** Download the output (`.xlsx`). This is the **intermediate budget data** for sub-process 3. | `Output - <Stream> - <timestamp>.xlsx` |
+| **S9b** | Analyst / Finance | **If no:** Review each flagged row (see §4), fix the source file or mapping, then **re-run from S4**. | Corrected source files |
+| **S10** | Analyst | **File the output** with its supporting documents (listed in the `Supporting Document` column). | – |
+
+---
+
+## 4. Checks and exceptions
+
+The tool raises these in the **Checks** panel (file-level) or the **Remarks** column (row-level).
+
+### 4.1 File-level checks
+
+| Check | Result if it fails | Action |
+|---|---|---|
+| File is `.xlsx` and readable | File rejected | Re-save as `.xlsx` |
+| GBP row 7 has `Funding Programme` | That GBP is skipped (red) | Check the sheet selection / header row |
+| Funding stream found in GBP | Warning, no values from that file | Confirm the stream exists in that GBP |
+| SuSy row 2 has exactly one `Programme Funding` and a `Total Approved Budget for FY` | Run stops (red) | Check the SuSy tab selection / header row |
+| SuSy last header is `Total` | Warning only | Confirm the column layout |
+| Mapping has the required headers and rows for the FY | Run stops (red) | Fix mapping headers / add FY rows |
+
+### 4.2 Row-level remarks
+
+| Remark | Meaning | Typical fix |
+|---|---|---|
+| `Amount mismatch (H − G = x)` | GBP and SuSy amounts differ | Confirm which is correct; correct SuSy or obtain the updated GBP |
+| `Not in GBP` | SuSy has an amount, GBP has none for this PHI | Check the GBP / mapping |
+| `Not in SuSy` | GBP has a budget, no SuSy disbursement row | Set up disbursement in SuSy |
+| `Duplicate in GBP (not added)` | Same PHI appears more than once across GBP rows/files | Remove the duplicate paper or row; amounts are **not** summed |
+| `Duplicate in SuSy (not added)` | Same SuSy PHI column used by more than one stream row | Correct the SuSy rows |
+| `SuSy amounts combined: …` | Different SuSy names map to one PHI (e.g. ICH + TTSH-ICH) and were **added** | Informational – confirm the total |
+| `SuSy row N has K values … PHI cannot be identified` | SuSy row has 0 or 2+ PHI values | Correct the SuSy row so only one PHI column is filled |
+| `Unmapped PHI name in GBP/SuSy: "x"` | Name not in the mapping for this FY | Add the name to the PHI mapping |
+| `Ambiguous PHI name …` | Name maps to more than one PHI | Fix the mapping so each name maps to one PHI |
+| `Non-numeric GBP value` / `Total Approved Budget … blank` | Amount cell is not a number | Correct the source cell |
+
+Values under SuSy `Others` (mapped to `N.A.`) are excluded and listed as a warning in the Checks panel.
+
+---
+
+## 5. Output
+
+One `.xlsx` with a single sheet `Output`:
+
+| Col | Field | Source |
+|---|---|---|
+| A | S/N | Sequential |
+| B | Cluster | PHI mapping |
+| C | PHI | PHI Official Name |
+| D | FY | Selected FY |
+| E | Funding Stream | Selected stream |
+| F | Categories | Blank (TBC) |
+| G | Amount Approved | GBP |
+| H | Amount Disbursed | SuSy `Total Approved Budget for FY` |
+| I | Check 1 | `Y` if G = H (rounded to whole dollars), else `N` |
+| J | Supporting Document | GBP and SuSy file names |
+| K | Date Timestamp | Run date/time |
+| L | Amount to Adjust | Blank (TBC – sub-process 3) |
+| M | Remarks | Exceptions from §4.2 |
+
+---
+
+## 6. Process flow (for the detailed draw.io)
+
+Node IDs match the step numbers above so the diagram and SOP stay aligned.
+
+```mermaid
+flowchart LR
+    I1[/GBP papers .xlsx/] --> S1
+    I1b[/Ad-hoc GBP PDF/] -->|convert to Excel| S1
+    I2[/SuSy disbursement .xlsx/] --> S1
+    S1[S1 Collect files by folder] --> S2[S2-S5 Open tool, select stream, load files, confirm sheets & FY]
+    I3[(PHI mapping)] -.lookup.-> S6
+    S2 --> S6[S6 Run extraction & checks<br/>GBP → col G, SuSy → col H]
+    S6 --> S7[S7 Review Checks panel]
+    S7 --> S8{S8 Checks pass?}
+    S8 -->|Yes| S9a[S9a Download Output .xlsx]
+    S9a --> INT[(Intermediate budget data)]
+    INT --> S10[S10 File output with supporting docs]
+    INT --> P3[[Sub-process 3: Reconciliation & Adjustments]]
+    S8 -->|No – exception| S9b[/S9b Manual review & fix source or mapping/]
+    S9b -.re-run.-> S2
+```
+
+Suggested swimlanes for the detailed diagram: **Analyst**, **Tool (HTML)**, **Finance / data owner** (fixes source files), with the tool lane showing the internal checks (§4.1 → extraction → mapping → §4.2 remarks).
+
+---
+
+## 7. Open items
+
+- [ ] PGMG stream: decide which rows to use (PG/MG summary rows, total row, or detail lines) and add support for the Annex B2 layout.
+- [ ] MAF Standalone Budget: define how it is used in the checks.
+- [ ] PHI mapping: add NUHS and SHS rows; SuSy tabs for NUHS and SHS.
+- [ ] Output columns `Categories` and `Amount to Adjust`: define rules.
+- [ ] Roles: confirm who performs S9b fixes and who approves the output.
+- [ ] Where the output and supporting documents are filed (S10).

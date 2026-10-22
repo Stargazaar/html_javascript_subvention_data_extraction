@@ -6,6 +6,9 @@
 # Copies made for transferring the HTML to the work laptop
 *.txt
 
+# Claude Code project instructions (local only)
+CLAUDE.md
+
 # Local scratch / reference files
 js_test.html
 html_demo.html
