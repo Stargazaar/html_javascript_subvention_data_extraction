@@ -193,19 +193,20 @@ const CLUSTERS = ['NHG', 'NUHS', 'SHS'];
 const GBP = {
   headerMarker: 'Funding Period',      // header row = first row whose column A has this text
   headerSearchRows: 30,                // only search the top rows for the marker
-  programmeHeader: 'Funding Programme',
-  firstValueCol: 'G',                  // PHI amounts start here
-  skipHeaders: ['TOTAL'],              // columns that are not PHIs
+  programmeHeader: 'Funding Programme',  // PHI columns start right after this column...
+  totalHeader: 'TOTAL',                  // ...and end right before this one
   defaultSheet: /Subvention_/i,        // sheet pre-selected in the picker
 };
 
 // SuSy disbursement file layout
 const SUSY = {
-  headerRow: 2,
+  headerMarker: 'Disbursement Number', // header row = first row containing this header
+  headerSearchRows: 30,
   programmeHeader: 'Programme Funding',
-  amountHeader: 'Total Approved Budget for FY',
-  firstValueCol: 'G',                  // PHI columns run from here to the column before "Total"
-  totalHeader: 'Total',                // expected header of the last column
+  amountHeader: 'Total Approved Budget for FY',  // PHI columns start right after this column...
+  totalHeader: 'Total',                          // ...and end right before this one
+  requiredHeader: 'Disbursement Number',         // rows with this blank are headings/summaries and are ignored
+  stopMarker: "Prior Years' Adjustments",        // rows from this marker down (PYA section) are ignored
   sheetName: cluster => `${cluster}_Report`,  // SuSy tab for a cluster (spaces/underscores and case are ignored when matching)
 };
 
@@ -467,7 +468,15 @@ function extractGbp(wb, sheetName, cluster, stream, mapping, log) {
     log('error', `${where}: header row ${headerIdx + 1} has no "${GBP.programmeHeader}" header – file skipped.`);
     return [];
   }
-  log('ok', `${where}: header row ${headerIdx + 1} found ("${GBP.programmeHeader}" in column ${colLetter(progCol)}).`);
+  // PHI columns sit between "Funding Programme" and "TOTAL" (start column differs: G in Annex B1, F in PGMG papers).
+  // If TOTAL is missing, take every header to the right and warn.
+  let endCol = header.findIndex((h, i) => i > progCol && norm(h) === norm(GBP.totalHeader));
+  if (endCol < 0) {
+    endCol = header.length;
+    log('warn', `${where}: no "${GBP.totalHeader}" header – using every column after "${GBP.programmeHeader}" as PHIs.`);
+  }
+  const phiRange = `${colLetter(progCol + 1)}:${colLetter(endCol - 1)}`;
+  log('ok', `${where}: header row ${headerIdx + 1} found ("${GBP.programmeHeader}" in column ${colLetter(progCol)}; PHI columns ${phiRange}).`);
 
   // Data rows are everything below the header row
   const matches = [];
@@ -477,9 +486,9 @@ function extractGbp(wb, sheetName, cluster, stream, mapping, log) {
 
   const entries = [];
   for (const r of matches) {
-    for (let c = colIndex(GBP.firstValueCol); c < header.length; c++) {
+    for (let c = progCol + 1; c < endCol; c++) {
       const name = clean(header[c]);
-      if (!name || GBP.skipHeaders.some(h => norm(h) === norm(name))) continue;
+      if (!name) continue;  // unnamed column – not a PHI
       const amount = toAmount(sheet.rows[r][c]);
       if (amount === null) continue;  // blank = no budget for this PHI
       entries.push({
@@ -496,23 +505,42 @@ function extractGbp(wb, sheetName, cluster, stream, mapping, log) {
 function extractSusy(wb, sheetName, cluster, stream, mapping, log) {
   const sheet = wb.sheets.find(s => s.name === sheetName);
   const where = `SuSy "${wb.fileName}" [${sheetName}]`;
-  const header = sheet.rows[SUSY.headerRow - 1] || [];
+
+  // Header row = first row (within the top rows) that contains the "Disbursement Number" header
+  const headerIdx = sheet.rows.slice(0, SUSY.headerSearchRows).findIndex(row => findHeader(row, SUSY.headerMarker) >= 0);
+  if (headerIdx < 0) throw new Error(`${where}: no header row with "${SUSY.headerMarker}" within the first ${SUSY.headerSearchRows} rows.`);
+  const header = sheet.rows[headerIdx], hr = headerIdx + 1;
 
   const progCols = header.map((h, i) => norm(h) === norm(SUSY.programmeHeader) ? i : -1).filter(i => i >= 0);
-  if (progCols.length !== 1) throw new Error(`${where}: row ${SUSY.headerRow} must contain exactly one "${SUSY.programmeHeader}" header (found ${progCols.length}).`);
+  if (progCols.length !== 1) throw new Error(`${where}: header row ${hr} must contain exactly one "${SUSY.programmeHeader}" header (found ${progCols.length}).`);
   const amountCol = findHeader(header, SUSY.amountHeader);
-  if (amountCol < 0) throw new Error(`${where}: header "${SUSY.amountHeader}" not found in row ${SUSY.headerRow}.`);
-  let lastCol = header.length - 1;
-  while (lastCol >= 0 && isBlank(header[lastCol])) lastCol--;
-  if (norm(header[lastCol]) !== norm(SUSY.totalHeader)) log('warn', `${where}: last header is "${clean(header[lastCol])}", expected "${SUSY.totalHeader}" – it is excluded anyway.`);
-  const firstCol = colIndex(SUSY.firstValueCol), range = `${SUSY.firstValueCol}:${colLetter(lastCol - 1)}`;
-  log('ok', `${where}: header row ${SUSY.headerRow} found; PHI columns ${range}, amount from "${SUSY.amountHeader}".`);
+  if (amountCol < 0) throw new Error(`${where}: header "${SUSY.amountHeader}" not found in row ${hr}.`);
+  const reqCol = findHeader(header, SUSY.requiredHeader);
+
+  // PHI columns sit between "Total Approved Budget for FY" and "Total"
+  const totalCol = header.findIndex((h, i) => i > amountCol && norm(h) === norm(SUSY.totalHeader));
+  if (totalCol < 0) throw new Error(`${where}: header "${SUSY.totalHeader}" not found after "${SUSY.amountHeader}" in row ${hr}.`);
+  const firstCol = amountCol + 1, range = `${colLetter(firstCol)}:${colLetter(totalCol - 1)}`;
+
+  // Stop before the Prior Years' Adjustments (PYA) section so its rows are not counted as current-year disbursements.
+  // Curly apostrophes are treated as straight ones.
+  const plain = v => norm(v).replace(/[‘’`]/g, "'");
+  let endRow = sheet.rows.findIndex((row, r) => r > headerIdx && row.some(v => plain(v).includes(plain(SUSY.stopMarker))));
+  if (endRow < 0) {
+    endRow = sheet.rows.length;
+    log('warn', `${where}: no "${SUSY.stopMarker}" section found – all rows below the header are used.`);
+  }
+  log('ok', `${where}: header row ${hr} found; PHI columns ${range}, amount from "${SUSY.amountHeader}"; rows ${hr + 1}–${endRow} used` +
+    (endRow < sheet.rows.length ? ` (PYA section from row ${endRow + 1} excluded).` : '.'));
 
   const entries = [];
-  sheet.rows.forEach((row, r) => {
-    if (r < SUSY.headerRow || norm(row[progCols[0]]) !== norm(stream.susyProgramme)) return;
+  let noDisbNo = 0;
+  sheet.rows.slice(0, endRow).forEach((row, r) => {
+    if (r <= headerIdx || norm(row[progCols[0]]) !== norm(stream.susyProgramme)) return;
+    // Rows without a Disbursement Number are headings/summaries, not disbursements
+    if (reqCol >= 0 && isBlank(row[reqCol])) { noDisbNo++; return; }
     const filled = [];
-    for (let c = firstCol; c < lastCol; c++) if (!isBlank(row[c])) filled.push(c);
+    for (let c = firstCol; c < totalCol; c++) if (!isBlank(row[c])) filled.push(c);
     const amount = toAmount(row[amountCol]);
     const entry = { source: 'SuSy', file: wb.fileName, sheet: sheetName, cluster, row: r + 1, amount, name: null, issue: null };
     if (filled.length === 1) {
@@ -528,6 +556,7 @@ function extractSusy(wb, sheetName, cluster, stream, mapping, log) {
     }
     entries.push(entry);
   });
+  if (noDisbNo) log('warn', `${where}: ${noDisbNo} "${stream.susyProgramme}" row(s) without a ${SUSY.requiredHeader} ignored.`);
   if (!entries.length) log('warn', `${where}: "${stream.susyProgramme}" not found.`);
   else log(entries.some(e => e.issue) ? 'warn' : 'ok', `${where}: ${entries.length} "${stream.susyProgramme}" row(s) found; ${entries.filter(e => e.issue).length} with issues.`);
   return entries;

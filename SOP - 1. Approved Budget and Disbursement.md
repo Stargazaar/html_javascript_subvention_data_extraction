@@ -24,7 +24,7 @@ For one funding stream at a time, confirm that the **approved budget** for each 
 
 **GBP paper (I1)**
 - The header row is the first row (within the top 30) whose column A is `Funding Period` – row 7 in Annex B1 papers, row 5 or 7 in PGMG papers. It must also contain `Funding Programme`.
-- PHI amounts start in column **G**; each header from G onwards is a PHI name. The `TOTAL` column is ignored.
+- PHI columns are the columns between `Funding Programme` and `TOTAL` (G onwards in Annex B1, F onwards in PGMG papers); each header is a PHI name.
 - The funding stream row is found by its Funding Programme text (e.g. `Output Goods & Services Tax (Output GST) Subvention`). It can be on any row.
 - Exception: the PGMG paper (Annex B2) has a different layout and is **not yet supported**.
 
@@ -34,8 +34,10 @@ For one funding stream at a time, confirm that the **approved budget** for each 
 
 **SuSy disbursement file (I2)**
 - One tab per cluster, named `<Cluster>_Report`.
-- Row 2 is the header row; it must contain **exactly one** `Programme Funding` column and a `Total Approved Budget for FY` column.
-- PHI columns run from **G** to the column before the last column (`Total`).
+- The header row is the first row (within the top 30) containing `Disbursement Number`; it must contain **exactly one** `Programme Funding` column and a `Total Approved Budget for FY` column.
+- PHI columns are the columns between `Total Approved Budget for FY` and `Total`.
+- Rows from the **Prior Years' Adjustments (PYAs)** marker downwards are ignored (PYAs are not current-year disbursements).
+- Rows without a **Disbursement Number** (headings/summaries) are ignored.
 - Each funding stream row (e.g. `Output GST Subvention`) must have **exactly one** value in the PHI columns. That column identifies the PHI; the amount is taken from `Total Approved Budget for FY`.
 
 **PHI name mapping (I3)**
@@ -83,8 +85,9 @@ The tool raises these in the **Checks** panel (file-level) or the **Remarks** co
 | GBP sheet or file name identifies exactly one cluster (NHG / NUHS / SHS) | That GBP is skipped (red) | Rename the sheet or file to include the cluster |
 | Funding stream found in GBP | Warning, no values from that file | Confirm the stream exists in that GBP |
 | SuSy has a `<Cluster>_Report` tab for each GBP cluster | That cluster's rows get remark `SuSy tab "…" not found` (red) | Check the SuSy file / tab name |
-| SuSy row 2 has exactly one `Programme Funding` and a `Total Approved Budget for FY` | Run stops (red) | Check the SuSy tab selection / header row |
-| SuSy last header is `Total` | Warning only | Confirm the column layout |
+| SuSy has a `Disbursement Number` header row with exactly one `Programme Funding`, a `Total Approved Budget for FY` and a `Total` after it | That cluster's tab is skipped (red) | Check the SuSy tab / header row |
+| SuSy has a `Prior Years' Adjustments` section | Warning only – all rows used | Confirm the tab has no PYA section |
+| Funding stream rows in SuSy have a Disbursement Number | Rows without one are ignored (warning with count) | Confirm they are headings/summaries |
 | Mapping has the required headers and rows for the FY | Run stops (red) | Fix mapping headers / add FY rows |
 
 ### 4.2 Row-level remarks

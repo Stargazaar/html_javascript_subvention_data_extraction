@@ -18,7 +18,7 @@ Funding streams, header rows and column positions are set in the configuration b
 |---|---|
 | `01 Global Budget Paper/` | Mock GBP papers (Annex B1 NHG / NUHS / SHS, Annex B2 PGMG) and MAF Standalone Budget input |
 | `02 SuSy Disbursement File/` | Mock SuSy disbursement spreadsheet (`NHG_Report`) |
-| `PHI Name Mapping - NHG Only.xlsx` | Maps GBP and SuSy PHI names to official names (by FY and cluster) |
+| `PHI Name Mapping.xlsx` | Maps GBP and SuSy PHI names to official names (by FY and cluster) |
 | `Sample Output - Mock.xlsx` | Example of the output layout |
 | `funding-process-flow(3)(2).drawio` | Process flow diagram |
 

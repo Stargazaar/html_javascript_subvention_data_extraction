@@ -9,6 +9,10 @@
 # Claude Code project instructions (local only)
 CLAUDE.md
 
+# Jupyter notebooks (may contain saved outputs with real data)
+*.ipynb
+.ipynb_checkpoints/
+
 # Local scratch / reference files
 js_test.html
 html_demo.html
