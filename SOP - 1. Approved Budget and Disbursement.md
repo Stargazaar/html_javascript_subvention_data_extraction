@@ -50,6 +50,9 @@ For one funding stream at a time, confirm that the **approved budget** for each 
 | Stream | GBP Funding Programme | SuSy Programme Funding | Status |
 |---|---|---|---|
 | Output GST | Output Goods & Services Tax (Output GST) Subvention | Output GST Subvention | Supported |
+| Disallowed GST | Disallowed Input Goods & Services Tax (DiGST) Subvention | Disallowed Input GST Subvention | Supported |
+| MAF | Medication Assistance Fund (MAF) | MAF (exact; not "MAF wef …" or "MAF Plus") | Supported |
+| MAF Plus | Medication Assistance Fund (MAF) Plus | MAF Plus (not "PG/MG assistance for MAF Plus") | Supported |
 | PGMG | (Annex B2 – PG / MG blocks) | TBC | Not yet supported |
 
 ---

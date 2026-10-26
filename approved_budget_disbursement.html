@@ -183,6 +183,25 @@ const FUNDING_STREAMS = [
     gbpProgramme: 'Output Goods & Services Tax (Output GST) Subvention',
     susyProgramme: 'Output GST Subvention',
   },
+  // Same Annex B1 layout as Output GST; names from Programme Mapping.xlsx
+  {
+    id: 'disallowed-gst',
+    label: 'Disallowed GST',
+    gbpProgramme: 'Disallowed Input Goods & Services Tax (DiGST) Subvention',
+    susyProgramme: 'Disallowed Input GST Subvention',
+  },
+  {
+    id: 'maf',
+    label: 'MAF',
+    gbpProgramme: 'Medication Assistance Fund (MAF)',
+    susyProgramme: 'MAF',            // exact match only – "MAF Plus", "MAF wef …" and "MAF (FY22)" are not included
+  },
+  {
+    id: 'maf-plus',
+    label: 'MAF Plus',
+    gbpProgramme: 'Medication Assistance Fund (MAF) Plus',
+    susyProgramme: 'MAF Plus',       // "PG/MG assistance for MAF Plus" is a different programme and is not included
+  },
 ];
 
 // Clusters. Each GBP paper belongs to one cluster, read from its sheet name (e.g. "FY25 Subvention_NHG")
