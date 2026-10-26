@@ -53,7 +53,15 @@ For one funding stream at a time, confirm that the **approved budget** for each 
 | Disallowed GST | Disallowed Input Goods & Services Tax (DiGST) Subvention | Disallowed Input GST Subvention | Supported |
 | MAF | Medication Assistance Fund (MAF) | MAF (exact; not "MAF wef …" or "MAF Plus") | Supported |
 | MAF Plus | Medication Assistance Fund (MAF) Plus | MAF Plus (not "PG/MG assistance for MAF Plus") | Supported |
-| PGMG | (Annex B2 – PG / MG blocks) | TBC | Not yet supported |
+| PG SOC – Services | Specialist Outpatient Clinic (SOC) Services | SOC Svcs | Supported (PG block, `<Cluster>_PG` tab) |
+| PG SOC – Drugs | Drugs - Standard Drug List (SDL) / Medication Assistance Fund (MAF) | Drugs (SDL/MAF) | Supported – **non-polyclinic** PHIs only |
+| PG Poly – Services | Polyclinic Services + Cervical Cancer Screening (CSS) + Breast Cancer Screening (BSS) (added together) | Poly Svcs + CSS + BSS | Supported |
+| PG Poly – Drugs | Drugs - Standard Drug List (SDL) / Medication Assistance Fund (MAF) | Drugs (SDL/MAF) | Supported – **polyclinic** PHIs only |
+| PG NAIS – SOC | National Adults Immunisation Schedule (NAIS) - Specialist Outpatient Clinic (SOC) | NAIS (SOC) | Supported |
+| PG NAIS – Poly | National Adults Immunisation Schedule (NAIS) - Polyclinic | NAIS (Poly) | Supported |
+| MG streams | (Annex B2 – MG block) | `<Cluster>_MG` tab | Not yet supported |
+
+PG streams read the **Annex B2 (PGMG)** paper and only use rows inside the `Pioneer Generation (PG)` block (from that heading to the `Merdeka Generation (MG)` heading, wherever they are). One output row per PHI **per category** (`Categories` column). Polyclinic PHIs = official names containing "Polyclinic" (NHG Polyclinics, National University Polyclinics, SingHealth Polyclinics, Eunos / Tampines North / Pasir Ris Polyclinic).
 
 ---
 
@@ -123,7 +131,7 @@ One `.xlsx` with a single sheet `Output`:
 | C | PHI | PHI Official Name |
 | D | FY | Selected FY |
 | E | Funding Stream | Selected stream |
-| F | Categories | Blank (TBC) |
+| F | Categories | Stream category (PG: Services / Drugs, NAIS: SOC / Poly); blank for Annex B1 streams |
 | G | Amount Approved | GBP |
 | H | Amount Disbursed | SuSy `Total Approved Budget for FY` |
 | I | Check 1 | `Y` if G = H (rounded to whole dollars), else `N` |

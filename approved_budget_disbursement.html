@@ -174,35 +174,51 @@
    1. CONFIGURATION – edit these to add funding streams or adjust layouts
    ===================================================================== */
 
-// Each funding stream: label shown in the dropdown / output, plus the exact
-// programme text to look for in the GBP and SuSy files.
+// Each funding stream is a list of lines. A line = the exact programme text in the GBP paper and in SuSy,
+// plus the output Category. Lines with the same category are added together per PHI.
+// Optional per stream:
+//   susyTab    – SuSy tab suffix (default "_Report" → e.g. "NHG_Report")
+//   gbpSection – only use GBP rows inside this block heading (e.g. the PG block of the PGMG paper)
+// Optional per line:
+//   phis       – 'polyclinic' or 'nonPolyclinic': keep only those PHIs (see POLYCLINIC_PHI)
+const PG_DRUGS = { gbp: 'Drugs - Standard Drug List (SDL) / Medication Assistance Fund (MAF)', susy: 'Drugs (SDL/MAF)' };
 const FUNDING_STREAMS = [
-  {
-    id: 'output-gst',
-    label: 'Output GST',
-    gbpProgramme: 'Output Goods & Services Tax (Output GST) Subvention',
-    susyProgramme: 'Output GST Subvention',
-  },
-  // Same Annex B1 layout as Output GST; names from Programme Mapping.xlsx
-  {
-    id: 'disallowed-gst',
-    label: 'Disallowed GST',
-    gbpProgramme: 'Disallowed Input Goods & Services Tax (DiGST) Subvention',
-    susyProgramme: 'Disallowed Input GST Subvention',
-  },
-  {
-    id: 'maf',
-    label: 'MAF',
-    gbpProgramme: 'Medication Assistance Fund (MAF)',
-    susyProgramme: 'MAF',            // exact match only – "MAF Plus", "MAF wef …" and "MAF (FY22)" are not included
-  },
-  {
-    id: 'maf-plus',
-    label: 'MAF Plus',
-    gbpProgramme: 'Medication Assistance Fund (MAF) Plus',
-    susyProgramme: 'MAF Plus',       // "PG/MG assistance for MAF Plus" is a different programme and is not included
-  },
+  // Annex B1 streams (names from Programme Mapping.xlsx)
+  { id: 'output-gst', label: 'Output GST',
+    lines: [{ category: '', gbp: 'Output Goods & Services Tax (Output GST) Subvention', susy: 'Output GST Subvention' }] },
+  { id: 'disallowed-gst', label: 'Disallowed GST',
+    lines: [{ category: '', gbp: 'Disallowed Input Goods & Services Tax (DiGST) Subvention', susy: 'Disallowed Input GST Subvention' }] },
+  // MAF: exact match only – "MAF Plus", "MAF wef …" and "MAF (FY22)" are not included
+  { id: 'maf', label: 'MAF',
+    lines: [{ category: '', gbp: 'Medication Assistance Fund (MAF)', susy: 'MAF' }] },
+  // MAF Plus: "PG/MG assistance for MAF Plus" is a different programme and is not included
+  { id: 'maf-plus', label: 'MAF Plus',
+    lines: [{ category: '', gbp: 'Medication Assistance Fund (MAF) Plus', susy: 'MAF Plus' }] },
+
+  // PG streams: Annex B2 (PGMG) paper, PG block only; SuSy "<Cluster>_PG" tab.
+  // PG has a single drugs line, split by PHI: polyclinics → PG Poly, all other PHIs → PG SOC.
+  { id: 'pg-soc', label: 'PG SOC', susyTab: '_PG', gbpSection: 'Pioneer Generation (PG)',
+    lines: [
+      { category: 'Services', gbp: 'Specialist Outpatient Clinic (SOC) Services', susy: 'SOC Svcs' },
+      { category: 'Drugs', ...PG_DRUGS, phis: 'nonPolyclinic' },
+    ] },
+  { id: 'pg-poly', label: 'PG Poly', susyTab: '_PG', gbpSection: 'Pioneer Generation (PG)',
+    lines: [
+      { category: 'Services', gbp: 'Polyclinic Services', susy: 'Poly Svcs' },
+      { category: 'Services', gbp: 'Cervical Cancer Screening (CSS)', susy: 'CSS' },
+      { category: 'Services', gbp: 'Breast Cancer Screening (BSS)', susy: 'BSS' },
+      { category: 'Drugs', ...PG_DRUGS, phis: 'polyclinic' },
+    ] },
+  { id: 'pg-nais', label: 'PG NAIS', susyTab: '_PG', gbpSection: 'Pioneer Generation (PG)',
+    lines: [
+      { category: 'SOC', gbp: 'National Adults Immunisation Schedule (NAIS) - Specialist Outpatient Clinic (SOC)', susy: 'NAIS (SOC)' },
+      { category: 'Poly', gbp: 'National Adults Immunisation Schedule (NAIS) - Polyclinic', susy: 'NAIS (Poly)' },
+    ] },
 ];
+
+// PHIs counted as polyclinics (matched on the PHI Official Name from the mapping file):
+// NHG Polyclinics, National University Polyclinics, SingHealth Polyclinics, Eunos / Tampines North / Pasir Ris Polyclinic
+const POLYCLINIC_PHI = /polyclinic/i;
 
 // Clusters. Each GBP paper belongs to one cluster, read from its sheet name (e.g. "FY25 Subvention_NHG")
 // or, failing that, its file name. The cluster selects the SuSy tab and the mapping rows to use.
@@ -215,6 +231,9 @@ const GBP = {
   programmeHeader: 'Funding Programme',  // PHI columns start right after this column...
   totalHeader: 'TOTAL',                  // ...and end right before this one
   defaultSheet: /Subvention_/i,        // sheet pre-selected in the picker
+  // Block headings in the Funding Programme column (PGMG paper). A block runs from its heading to the next heading;
+  // their row positions differ between papers, so they are found by text.
+  sectionHeadings: ['Pioneer Generation (PG)', 'Merdeka Generation (MG)'],
 };
 
 // SuSy disbursement file layout
@@ -226,7 +245,8 @@ const SUSY = {
   totalHeader: 'Total',                          // ...and end right before this one
   requiredHeader: 'Disbursement Number',         // rows with this blank are headings/summaries and are ignored
   stopMarker: "Prior Years' Adjustments",        // rows from this marker down (PYA section) are ignored
-  sheetName: cluster => `${cluster}_Report`,  // SuSy tab for a cluster (spaces/underscores and case are ignored when matching)
+  // SuSy tab for a cluster and stream, e.g. "NHG_Report" or "NHG_PG" (spaces/underscores and case are ignored when matching)
+  sheetName: (cluster, stream) => `${cluster}${stream.susyTab || '_Report'}`,
 };
 
 // PHI mapping file (first sheet, headers in row 1)
@@ -465,10 +485,20 @@ function detectCluster(wb, log) {
   return null;
 }
 
-// Find the SuSy tab for a cluster, ignoring case, spaces and underscores ("NHG_Report" = "NHG Report")
-function findSusySheet(wb, cluster) {
+// Find the SuSy tab for a cluster and stream, ignoring case, spaces and underscores ("NHG_Report" = "NHG Report")
+function findSusySheet(wb, cluster, stream) {
   const key = name => name.replace(/[\s_]+/g, '').toLowerCase();
-  return wb.sheets.find(s => key(s.name) === key(SUSY.sheetName(cluster)));
+  return wb.sheets.find(s => key(s.name) === key(SUSY.sheetName(cluster, stream)));
+}
+
+// Line filter by PHI type (e.g. PG drugs: polyclinics → PG Poly, others → PG SOC).
+// Uses the mapped official name(s); an ambiguous name counts as a polyclinic only if all its matches are polyclinics.
+function keepForLine(line, entry) {
+  if (!line.phis || !entry.phi) return true;
+  const p = entry.phi;
+  const names = p.rec ? [p.rec.official] : p.recs ? p.recs.map(r => r.official) : [entry.name];
+  const isPoly = names.every(n => POLYCLINIC_PHI.test(n));
+  return line.phis === 'polyclinic' ? isPoly : !isPoly;
 }
 
 function extractGbp(wb, sheetName, cluster, stream, mapping, log) {
@@ -497,27 +527,48 @@ function extractGbp(wb, sheetName, cluster, stream, mapping, log) {
   const phiRange = `${colLetter(progCol + 1)}:${colLetter(endCol - 1)}`;
   log('ok', `${where}: header row ${headerIdx + 1} found ("${GBP.programmeHeader}" in column ${colLetter(progCol)}; PHI columns ${phiRange}).`);
 
-  // Data rows are everything below the header row
-  const matches = [];
-  sheet.rows.forEach((row, r) => { if (r > headerIdx && norm(row[progCol]) === norm(stream.gbpProgramme)) matches.push(r); });
-  if (!matches.length) { log('warn', `${where}: "${stream.gbpProgramme}" not found.`); return []; }
-  if (matches.length > 1) log('warn', `${where}: "${stream.gbpProgramme}" appears in ${matches.length} rows (${matches.map(r => r + 1).join(', ')}) – values will be flagged as duplicates.`);
+  // Data rows: everything below the header row, or – for streams with a gbpSection (e.g. PG) – only the rows
+  // between that block heading and the next block heading, because the same line names repeat under MG.
+  let start = headerIdx + 1, end = sheet.rows.length;
+  if (stream.gbpSection) {
+    const isHeading = (row, h) => norm(row[progCol]) === norm(h);
+    const s = sheet.rows.findIndex((row, r) => r > headerIdx && isHeading(row, stream.gbpSection));
+    if (s < 0) { log('warn', `${where}: block "${stream.gbpSection}" not found.`); return []; }
+    const e = sheet.rows.findIndex((row, r) => r > s && GBP.sectionHeadings.some(h => isHeading(row, h)));
+    start = s + 1;
+    end = e < 0 ? sheet.rows.length : e;
+    log('ok', `${where}: block "${stream.gbpSection}" = rows ${start + 1}–${end}.`);
+  }
 
   const entries = [];
-  for (const r of matches) {
-    for (let c = progCol + 1; c < endCol; c++) {
-      const name = clean(header[c]);
-      if (!name) continue;  // unnamed column – not a PHI
-      const amount = toAmount(sheet.rows[r][c]);
-      if (amount === null) continue;  // blank = no budget for this PHI
-      entries.push({
-        source: 'GBP', file: wb.fileName, sheet: sheetName, cluster, cell: `${colLetter(c)}${r + 1}`, name, amount,
-        phi: lookupPhi(mapping.byGbp, name, cluster),
-        issue: Number.isNaN(amount) ? `Non-numeric GBP value in ${colLetter(c)}${r + 1}: "${sheet.rows[r][c]}"` : null,
-      });
+  stream.lines.forEach((line, lineIdx) => {
+    const matches = [];
+    for (let r = start; r < end; r++) if (norm(sheet.rows[r][progCol]) === norm(line.gbp)) matches.push(r);
+    const label = `"${line.gbp}"${line.category ? ` (${line.category})` : ''}`;
+    if (!matches.length) { log('warn', `${where}: ${label} not found.`); return; }
+    if (matches.length > 1) log('warn', `${where}: ${label} appears in ${matches.length} rows (${matches.map(r => r + 1).join(', ')}) – values will be flagged as duplicates.`);
+
+    let count = 0;
+    for (const r of matches) {
+      for (let c = progCol + 1; c < endCol; c++) {
+        const name = clean(header[c]);
+        if (!name) continue;  // unnamed column – not a PHI
+        const amount = toAmount(sheet.rows[r][c]);
+        if (amount === null) continue;  // blank = no budget for this PHI
+        const entry = {
+          source: 'GBP', file: wb.fileName, sheet: sheetName, cluster, cell: `${colLetter(c)}${r + 1}`, name, amount,
+          lineIdx, category: line.category, lineName: line.gbp,
+          phi: lookupPhi(mapping.byGbp, name, cluster),
+          issue: Number.isNaN(amount) ? `Non-numeric GBP value in ${colLetter(c)}${r + 1}: "${sheet.rows[r][c]}"` : null,
+        };
+        if (!keepForLine(line, entry)) continue;  // PHI belongs to the other split (e.g. polyclinic vs non-polyclinic)
+        entries.push(entry);
+        count++;
+      }
     }
-  }
-  log('ok', `${where}: ${entries.length} PHI value(s) extracted from row(s) ${matches.map(r => r + 1).join(', ')}.`);
+    log('ok', `${where}: ${label} – ${count} PHI value(s) from row(s) ${matches.map(r => r + 1).join(', ')}` +
+      (line.phis ? ` (${line.phis === 'polyclinic' ? 'polyclinic' : 'non-polyclinic'} PHIs only).` : '.'));
+  });
   return entries;
 }
 
@@ -553,9 +604,13 @@ function extractSusy(wb, sheetName, cluster, stream, mapping, log) {
     (endRow < sheet.rows.length ? ` (PYA section from row ${endRow + 1} excluded).` : '.'));
 
   const entries = [];
+  const rawCount = {};  // rows found per SuSy name, before the PHI-type filter
   let noDisbNo = 0;
   sheet.rows.slice(0, endRow).forEach((row, r) => {
-    if (r <= headerIdx || norm(row[progCols[0]]) !== norm(stream.susyProgramme)) return;
+    if (r <= headerIdx) return;
+    // Which of the stream's lines does this row belong to (by its Programme Funding text)?
+    const lineIdxs = stream.lines.map((l, i) => norm(row[progCols[0]]) === norm(l.susy) ? i : -1).filter(i => i >= 0);
+    if (!lineIdxs.length) return;
     // Rows without a Disbursement Number are headings/summaries, not disbursements
     if (reqCol >= 0 && isBlank(row[reqCol])) { noDisbNo++; return; }
     const filled = [];
@@ -573,11 +628,27 @@ function extractSusy(wb, sheetName, cluster, stream, mapping, log) {
       entry.issue = [entry.issue, `"${SUSY.amountHeader}" is ${amount === null ? 'blank' : 'non-numeric'} in row ${r + 1}`].filter(Boolean).join('; ');
       entry.amount = null;
     }
-    entries.push(entry);
+    // One entry per matching line, keeping only PHIs allowed for that line (e.g. polyclinic split)
+    for (const i of lineIdxs) {
+      const line = stream.lines[i];
+      rawCount[line.susy] = (rawCount[line.susy] || 0) + 1;
+      const e = { ...entry, lineIdx: i, category: line.category, lineName: line.susy };
+      if (keepForLine(line, e)) entries.push(e);
+    }
   });
-  if (noDisbNo) log('warn', `${where}: ${noDisbNo} "${stream.susyProgramme}" row(s) without a ${SUSY.requiredHeader} ignored.`);
-  if (!entries.length) log('warn', `${where}: "${stream.susyProgramme}" not found.`);
-  else log(entries.some(e => e.issue) ? 'warn' : 'ok', `${where}: ${entries.length} "${stream.susyProgramme}" row(s) found; ${entries.filter(e => e.issue).length} with issues.`);
+
+  // Summary per SuSy programme name
+  const names = [...new Set(stream.lines.map(l => l.susy))];
+  if (noDisbNo) log('warn', `${where}: ${noDisbNo} row(s) of this stream without a ${SUSY.requiredHeader} ignored.`);
+  for (const n of names) {
+    const found = entries.filter(e => e.lineName === n);
+    const filter = stream.lines.find(l => l.susy === n && l.phis)?.phis;
+    if (!rawCount[n]) log('warn', `${where}: "${n}" not found.`);
+    else if (!found.length) log('ok', `${where}: "${n}" – ${rawCount[n]} row(s) found, none for ${filter === 'polyclinic' ? 'polyclinic' : 'non-polyclinic'} PHIs.`);
+    else log(found.some(e => e.issue) ? 'warn' : 'ok', `${where}: "${n}" – ${found.length} row(s) kept` +
+      (rawCount[n] > found.length ? ` of ${rawCount[n]} (${filter === 'polyclinic' ? 'polyclinic' : 'non-polyclinic'} PHIs only)` : '') +
+      `; ${found.filter(e => e.issue).length} with issues.`);
+  }
   return entries;
 }
 
@@ -590,17 +661,19 @@ function reconcile(entries, stream, fy, log, clusterNotes = {}) {
   const groups = new Map();
   const getGroup = (key, init) => groups.get(key) || groups.set(key, { ...init, gbp: [], susy: [], notes: [] }).get(key);
 
+  // One output row per PHI and category; categories keep the order they have in the stream's lines
   for (const e of entries) {
     let g;
+    const cat = { category: e.category || '', catOrder: stream.lines.findIndex(l => l.category === e.category) };
     if (!e.name) {
-      g = getGroup(`issue|${e.cluster}|${e.source}|${e.row}`, { cluster: e.cluster, phi: `(Unidentified – ${e.source} ${e.sheet} row ${e.row})`, order: Infinity });
+      g = getGroup(`issue|${e.cluster}|${e.source}|${e.row}|${cat.category}`, { ...cat, cluster: e.cluster, phi: `(Unidentified – ${e.source} ${e.sheet} row ${e.row})`, order: Infinity });
     } else if (e.phi.status === 'ok') {
-      g = getGroup(`${e.phi.rec.cluster}|${e.phi.rec.official}`, { cluster: e.phi.rec.cluster, phi: e.phi.rec.official, order: e.phi.rec.order });
+      g = getGroup(`${e.phi.rec.cluster}|${e.phi.rec.official}|${cat.category}`, { ...cat, cluster: e.phi.rec.cluster, phi: e.phi.rec.official, order: e.phi.rec.order });
     } else if (e.phi.status === 'excluded') {
       log('warn', `${e.source} value under "${e.name}" (${e.cell}, ${fmt(e.amount)}) maps to "${e.phi.rec.official}" – excluded from the output.`);
       continue;
     } else {
-      g = getGroup(`${e.phi.status}|${e.cluster}|${norm(e.name)}`, { cluster: e.cluster, phi: e.name, order: Infinity });
+      g = getGroup(`${e.phi.status}|${e.cluster}|${norm(e.name)}|${cat.category}`, { ...cat, cluster: e.cluster, phi: e.name, order: Infinity });
       const note = e.phi.status === 'unmapped'
         ? `Unmapped PHI name in ${e.source}: "${e.name}"`
         : `Ambiguous PHI name in ${e.source}: "${e.name}" maps to ${e.phi.recs.map(r => `${r.official} (${r.cluster})`).join(', ')}`;
@@ -612,28 +685,33 @@ function reconcile(entries, stream, fy, log, clusterNotes = {}) {
 
   const now = timestamp();
   return [...groups.values()]
-    .sort((a, b) => a.order - b.order)
+    .sort((a, b) => a.order - b.order || a.catOrder - b.catOrder)
     .map((g, i) => {
       const remarks = [...g.notes];
       const describe = list => list.map(e => `${e.cell || 'row ' + e.row} = ${fmt(e.amount)}`).join('; ');
+      const groupBy = (list, keyFn) => { const m = new Map(); list.forEach(e => m.set(keyFn(e), [...(m.get(keyFn(e)) || []), e])); return [...m.values()]; };
 
-      // GBP: one value per PHI; more than one (across rows or files) is flagged, not added
+      // GBP: each line gives one value per PHI. The same line twice (across rows or files) is flagged, not added;
+      // different lines in the same category (e.g. Poly Services + CSS + BSS) are added.
       const gbpValid = g.gbp.filter(e => !e.issue);
+      const gbpDup = groupBy(gbpValid, e => e.lineIdx).filter(l => l.length > 1);
       let approved = null;
-      if (gbpValid.length === 1) approved = gbpValid[0].amount;
-      else if (gbpValid.length > 1) remarks.push(`Duplicate in GBP (not added): ${gbpValid.map(e => `${e.file} ${e.cell} = ${fmt(e.amount)}`).join('; ')}`);
+      if (gbpDup.length) {
+        remarks.push(`Duplicate in GBP (not added): ${gbpDup.flat().map(e => `${e.file} ${e.cell} = ${fmt(e.amount)}`).join('; ')}`);
+      } else if (gbpValid.length) {
+        approved = gbpValid.reduce((sum, e) => sum + e.amount, 0);
+        if (gbpValid.length > 1) remarks.push(`GBP amounts combined: ${gbpValid.map(e => `${e.lineName} (${e.cell}) ${fmt(e.amount)}`).join(' + ')}`);
+      }
 
-      // SuSy: different SuSy names for one PHI are added; the same SuSy column twice is flagged
+      // SuSy: different SuSy names or lines for one PHI are added; the same SuSy column for the same line twice is flagged
       const susyValid = g.susy.filter(e => !e.issue);
-      const byName = new Map();
-      susyValid.forEach(e => byName.set(norm(e.name), [...(byName.get(norm(e.name)) || []), e]));
-      const dupNames = [...byName.values()].filter(list => list.length > 1);
+      const dupNames = groupBy(susyValid, e => `${e.lineIdx}|${norm(e.name)}`).filter(l => l.length > 1);
       let disbursed = null;
       if (dupNames.length) {
-        remarks.push(`Duplicate in SuSy (not added): ${dupNames.map(l => `${l[0].name} rows ${l.map(e => e.row).join(', ')} (${describe(l)})`).join('; ')}`);
+        remarks.push(`Duplicate in SuSy (not added): ${dupNames.map(l => `${l[0].lineName} / ${l[0].name} rows ${l.map(e => e.row).join(', ')} (${describe(l)})`).join('; ')}`);
       } else if (susyValid.length) {
         disbursed = susyValid.reduce((sum, e) => sum + e.amount, 0);
-        if (susyValid.length > 1) remarks.push(`SuSy amounts combined: ${susyValid.map(e => `${e.name} (row ${e.row}) ${fmt(e.amount)}`).join(' + ')}`);
+        if (susyValid.length > 1) remarks.push(`SuSy amounts combined: ${susyValid.map(e => `${e.lineName} / ${e.name} (row ${e.row}) ${fmt(e.amount)}`).join(' + ')}`);
       }
 
       // Compare G (GBP) with H (SuSy)
@@ -657,7 +735,7 @@ function reconcile(entries, stream, fy, log, clusterNotes = {}) {
         'PHI': g.phi,
         'FY': fy,
         'Funding Stream': stream.label,
-        'Categories': '',
+        'Categories': g.category,
         'Amount Approved': approved,
         'Amount Disbursed': disbursed,
         'Check 1': matched ? 'Y' : 'N',
@@ -696,14 +774,14 @@ async function run() {
     }
     if (!clusters.size) throw new Error('None of the GBP papers could be linked to a cluster – see Checks.');
 
-    // SuSy: read the <Cluster>_Report tab for every cluster found in the GBP papers.
+    // SuSy: read the stream's tab (e.g. <Cluster>_Report or <Cluster>_PG) for every cluster found in the GBP papers.
     // A missing or malformed tab only affects that cluster; its rows get an explanatory remark.
     const susyEntries = [], clusterNotes = {};
     for (const cluster of clusters) {
-      const sheet = findSusySheet(state.susy, cluster);
+      const sheet = findSusySheet(state.susy, cluster, stream);
       if (!sheet) {
-        clusterNotes[cluster] = `SuSy tab "${SUSY.sheetName(cluster)}" not found`;
-        log('error', `SuSy "${state.susy.fileName}": tab "${SUSY.sheetName(cluster)}" for cluster ${cluster} not found.`);
+        clusterNotes[cluster] = `SuSy tab "${SUSY.sheetName(cluster, stream)}" not found`;
+        log('error', `SuSy "${state.susy.fileName}": tab "${SUSY.sheetName(cluster, stream)}" for cluster ${cluster} not found.`);
         continue;
       }
       try {
@@ -916,12 +994,18 @@ async function onGbpFiles(files) {
   }
 }
 
+// Show which cluster tabs exist for the selected stream; the right one is used automatically for each GBP cluster
+function showSusyTabs() {
+  if (!state.susy) return;
+  const stream = FUNDING_STREAMS.find(s => s.id === $('stream').value);
+  const tabs = CLUSTERS.map(c => `${c}: ${findSusySheet(state.susy, c, stream)?.name || 'missing'}`).join(' · ');
+  $('susyTabs').textContent = `Cluster tabs for ${stream.label} – ${tabs}`;
+}
+
 async function onSusyFile(file) {
   try {
     state.susy = await loadWorkbook(file);
-    // Show which cluster tabs exist; the right one is used automatically for each GBP cluster
-    const tabs = CLUSTERS.map(c => `${c}: ${findSusySheet(state.susy, c)?.name || 'missing'}`).join(' · ');
-    $('susyTabs').textContent = `Cluster tabs – ${tabs}`;
+    showSusyTabs();
     setStatus('SuSy file loaded.');
   } catch (e) {
     state.susy = null;
@@ -952,6 +1036,7 @@ async function onMafFile(file) {
 }
 
 $('stream').innerHTML = FUNDING_STREAMS.map(s => `<option value="${s.id}">${esc(s.label)}</option>`).join('');
+$('stream').addEventListener('change', showSusyTabs);
 $('gbpFiles').addEventListener('change', e => e.target.files.length && onGbpFiles([...e.target.files]));
 $('susyFile').addEventListener('change', e => e.target.files[0] && onSusyFile(e.target.files[0]));
 $('mapFile').addEventListener('change', e => e.target.files[0] && onMapFile(e.target.files[0]));
