@@ -13,6 +13,9 @@ CLAUDE.md
 *.ipynb
 .ipynb_checkpoints/
 
+# Mock workbooks whose labels (A:E) come from real reports – local testing only, not for the public repo
+02 SuSy Disbursement File/Monthly Mar26 and FY25Q4 Subvention Disbursement Spreadsheet - Mock.xlsx
+
 # Local scratch / reference files
 js_test.html
 html_demo.html
